@@ -1,0 +1,33 @@
+{
+  "name": "@adriannajuchacz/heavyReqDetector",
+  "version": "1.0.0",
+  "description": "cli tool",
+  "main": "src/index.js",
+  "bin": {
+    "@adriannajuchacz/heavyReqDetector": "bin/heavyReqDetector",
+    "heavyReqDetector": "bin/heavyReqDetector"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adriannajuchacz/heavyReqDetector.git"
+  },
+  "keywords": [
+    "cli",
+    "heavyReqDetector"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/adriannajuchacz/heavyReqDetector/issues"
+  },
+  "homepage": "https://github.com/adriannajuchacz/heavyReqDetector#readme",
+  "dependencies": {
+    "esm": "^3.2.25"
+  }
+}
