@@ -3,14 +3,11 @@
   "version": "1.0.0",
   "description": "cli tool",
   "main": "src/index.js",
-  "bin": {
-    "@adriannajuchacz/heavyReqDetector": "bin/heavyReqDetector",
-    "heavyReqDetector": "bin/heavyReqDetector"
-  },
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
+    "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -28,6 +25,7 @@
   },
   "homepage": "https://github.com/adriannajuchacz/heavyReqDetector#readme",
   "dependencies": {
-    "esm": "^3.2.25"
+    "aws-cli-js": "^2.2.3",
+    "dotenv": "^10.0.0"
   }
 }
