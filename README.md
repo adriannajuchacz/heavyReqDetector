@@ -12,3 +12,7 @@ takes output from Cloudwatch on query: get Requests for a specific time period a
 example of such an output, exported from the AWS Console (todo: should be requested through code)
 ## manual_deliverables/getCPUUtilizationMetric.sh
 example script for sending requests to AWS Cloudwatch with time variables
+
+# Requirements
+
+## node 12+ 

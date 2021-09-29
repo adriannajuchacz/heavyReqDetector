@@ -1,29 +1,18 @@
 /**
-     * Groups the output for the "Incoming Requests for the time period" from the "Manual detection of heavy requests"
-     * 
-     *
-     * @input  urls.csv with format "/v/dev-0.0/tenants/dashboard/events,2199"
-     * @output saves a list of urls groupped by "praxis-XXXXX" into urls.json
-     */
+ * Groups the output for the "Incoming Requests for the time period" from the "Manual detection of heavy requests"
+ * 
+ *
+ * @input  urls.csv with format "/v/dev-0.0/tenants/dashboard/events,2199"
+ * @output saves a list of urls groupped by "praxis-XXXXX" into urls.json
+ */
 const csv = require('csvtojson')
 const jsonfile = require('jsonfile')
 
 // requires config
 const csvFilePath = 'urls.csv'
-const file = 'urlsTest.json'
-// TODO: Add other regex
-const regex = /praxis-\d{5}/
-const regexReplace = "praxis-XXXXX"
-
-const variableRegexArr = [
-    {
-        "regex": /praxis-\d{5}/,
-        "regexReplace": "praxis-XXXXX"
-    }
-]
-
-// list of regex values, that will match with potential variables
-// A variable is a part of a URL that is not a part of a collection, e.g. subtenant Id
+const saveToFile = 'groupedUrls.json'
+const variableReplacement = "XXXXX"
+const collectionNames = ["subtenants", "calls", "callers"]
 
 csv()
     .fromFile(csvFilePath)
@@ -31,8 +20,29 @@ csv()
     })
 
 /**
- * if the url contains search params, replaces the variables with "XXXXX"
- * @param string url 
+ * if the url contains collection (defined in the array collectionNames) 
+ * IDs (which we define as variables), replaces them with the variableReplacement
+ * @param string path 
+ * e.g.
+ * "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-10909/calls/614c1ea7ed7cb50019dfb8b0"
+ * =>  "/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/calls/XXXXX"
+ */
+
+function reduceVariablesInPath(path) {
+    let pathArr = path.split("/")
+    for (let i = 0; i < pathArr.length; i++) {
+        // in a sequence ".../${collectionName}/<STRING>" will always be a variable <STRING>
+        // e.g. callers/+491727528252
+        if (collectionNames.includes(pathArr[i]) && pathArr[i + 1]) {
+            pathArr[i + 1] = variableReplacement
+        }
+    }
+    return pathArr.join("/")
+}
+
+/**
+ * if the url contains search params (which we define as variables), replaces it replaces them with the variableReplacement
+ * @param string searchPart 
  * e.g.
  * "/v/dev-0.0/tenants/10944/smartpatcher/subtenants?phone_number=10944&id=1094400"
  * => "/v/dev-0.0/tenants/10944/smartpatcher/subtenants?phone_number=XXXXX&id=XXXXX"
@@ -40,36 +50,27 @@ csv()
  * "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-diltschev/calls"
  * => "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-diltschev/calls"
  */
-// TODO: debug
-// you should use node 12+ or add a polyfill for it
-// TODO: refactor
-function replaceSearchVariables(url) {
-    console.log(url)
-    if (url.includes("?")) {
-        // take the part of url after ?
-        // e.g. /v/dev-0.0/tenants/10944/smartpatcher/subtenants?phone_number=10944&id=1094400 => phone_number=10944&id=1094400
-        let searchPart = url.split("?")[1]
-        //after that:
-        // url.split("?")[0] = /v/dev-0.0/tenants/10944/smartpatcher/subtenants
-        // url.split("?")[1] = phone_number=10944&id=1094400
-        let pArr = Object.fromEntries(new URLSearchParams(searchPart))
 
-        let newSearchPart = searchPart
-        Object.entries(pArr).forEach((paramArr) => {
-            // paramArr =  ["phone_number", "10944"]
-            let paramStr = `${paramArr[0]}=${paramArr[1]}`
-            // paramStr = "phone_number=10944"
+function reduceVariablesInSearch(searchPart) {
+    let pArr = Object.fromEntries(new URLSearchParams(searchPart))
 
-            // extracting the specific param from the searchPart
-            let [prefix, suffix] = newSearchPart.split(paramStr)
+    let newSearchPart = searchPart
 
-            // replacing the variable
-            let newParamStr = `${paramArr[0]}=XXXXX`
-            // joining the searchPart with the replaced variable
-            newSearchPart = newSearchPart.split(paramStr).join(newParamStr)
-        })
-        return url.split("?")[0].concat("?").concat(newSearchPart);
-    }
+    Object.entries(pArr).forEach((paramArr) => {
+        // paramArr =  ["phone_number", "10944"]
+        let paramStr = `${paramArr[0]}=${paramArr[1]}`
+        // paramStr = "phone_number=10944"
+
+        // replacing the variable
+        let newParamStr = `${paramArr[0]}=${variableReplacement}`
+
+        // in case + got converted to %2B, change it back, so that the split() works
+        newSearchPart = newSearchPart.replace("%2B", "+")
+        // joining the searchPart with the replaced variable
+        newSearchPart = newSearchPart.split(paramStr).join(newParamStr)
+    })
+
+    return newSearchPart;
 }
 
 const main = async () => {
@@ -77,20 +78,18 @@ const main = async () => {
     // fix format & replace Variables with "XXXXX"
     urlArray = urlArray.map(x => {
         let url = x.req.url;
-        console.log(typeof x.req.url)
-        url = replaceSearchVariables(url)
-        return { "url": x.req.url, "count": Number(x["count(*)"]) }
-    });
+        // reduce Variables separately in the path and search part of the url
 
-    // TODO: separate function
-    // group defined variables
-    // e.g. replace subtenant ids with praxis-XXXXX
-    variableRegexArr.forEach((x) => {
-        urlArray.map((s) => {
-            s.url = s.url.split(x.regex).join(x.regexReplace)
-            return s
-        })
-    })
+        // if url has no params url.split("?")[0] = url
+        let pathPart = reduceVariablesInPath(url.split("?")[0])
+        // if url has params, replace the variables
+        let searchPart = url.includes("?") ? "?".concat(reduceVariablesInSearch(url.split("?")[1])) : ""
+
+        //join back the strings
+        url = pathPart.concat(searchPart)
+
+        return { "url": url, "count": Number(x["count(*)"]) }
+    });
 
     // sum count by url (now with duplicates)
     let counts = {}
@@ -98,7 +97,7 @@ const main = async () => {
 
 
     //save to json file
-    jsonfile.writeFile("groupedUrls.json", counts, { spaces: 2 }, function (err) {
+    jsonfile.writeFile(saveToFile, counts, { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
 
