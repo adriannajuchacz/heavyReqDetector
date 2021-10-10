@@ -12,11 +12,11 @@ const jsonfile = require('jsonfile')
 /**
  * csvFilePath must be CSV File with the following format "/v/dev-0.0/tenants/dashboard/events,2199"
  */
-const csvFilePath = 'urls.csv'
+const csvFilePath = '../data/urls.csv'
 /**
  * saveToFile is the name of a JSON file to which the grouped URLs should be saved.
  */
-const saveToFile = 'groupedUrls.json'
+const saveToFile = '../data/groupedUrls.json'
 /**
  * variableReplacement is a string that all variables in the URLs will be replaced with
  * * e.g. "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-10909/calls/614c1ea7ed7cb50019dfb8b0"
@@ -72,7 +72,7 @@ function splitArrIntoPairs(initialArray) {
  * @param {string} saveToFile 
  * @param {string} variableReplacement 
  */
-export async function groupAndCountUrls() {
+async function groupAndCountUrls() {
     let urlArray = await csv().fromFile(csvFilePath);
 
     // STEP 1: Remove search part
@@ -120,9 +120,6 @@ export async function groupAndCountUrls() {
         return obj;
     })
 
-    // TODO: just for testing, remove
-    //console.log(urlArray.slice(0,9))
-
     // sum count by url (now with duplicates)
     let counts = {}
     urlArray.forEach(function (x) { counts[x.url] = (counts[x.url] || 0) + x.count; });
@@ -140,5 +137,11 @@ export async function groupAndCountUrls() {
     jsonfile.writeFile(saveToFile, urlArray, { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
-
+    
+    return urlArray;
 }
+
+module.exports = {
+    groupAndCountUrls,
+    variableReplacement
+};
