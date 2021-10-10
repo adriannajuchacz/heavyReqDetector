@@ -13,6 +13,17 @@ const csvFilePath = 'urls.csv'
 const saveToFile = 'groupedUrls.json'
 const variableReplacement = "XXXXX"
 const collectionNames = ["subtenants", "calls", "callers"]
+/**
+ * Defines granularity of the replacement of variables from the url's path.
+ * startCollectionLevel = 1 means that, the ID of the first "{collection_Name}/{ID}" will not be replaced with the variableReplacement
+ * e.g. "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-10909/calls/614c1ea7ed7cb50019dfb8b0"
+ * startCollectionLevel = 0
+ * =>  "/v/dev-0.0/tenants/XXXXX/subtenants/XXXXX/calls/XXXXX"
+ * e.g. startCollectionLevel = 1
+ * =>  "/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/calls/XXXXX"
+ */
+const startCollectionLevel = 1
+const urlsToIgnore = ["/", ""]
 
 csv()
     .fromFile(csvFilePath)
@@ -51,7 +62,7 @@ function reduceVariablesInPath(path) {
  * => "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-diltschev/calls"
  */
 
-function reduceVariablesInSearch(searchPart) {
+function replaceSearchVariablesInAString(searchPart) {
     let pArr = Object.fromEntries(new URLSearchParams(searchPart))
 
     let newSearchPart = searchPart
@@ -73,31 +84,107 @@ function reduceVariablesInSearch(searchPart) {
     return newSearchPart;
 }
 
-const main = async () => {
-    let urlArray = await csv().fromFile(csvFilePath);
-    // fix format & replace Variables with "XXXXX"
-    urlArray = urlArray.map(x => {
+function replaceSearchVariablesInAnArray(urlArray) {
+    return urlArray.map(x => {
         let url = x.req.url;
-        // reduce Variables separately in the path and search part of the url
-
-        // if url has no params url.split("?")[0] = url
-        let pathPart = reduceVariablesInPath(url.split("?")[0])
+        
+        // split the search part from the path part
         // if url has params, replace the variables
-        let searchPart = url.includes("?") ? "?".concat(reduceVariablesInSearch(url.split("?")[1])) : ""
+        let searchPart = url.includes("?") ? "?".concat(replaceSearchVariablesInAString(url.split("?")[1])) : ""
 
         //join back the strings
-        url = pathPart.concat(searchPart)
+        url = url.split("?")[0].concat(searchPart)
 
         return { "url": url, "count": Number(x["count(*)"]) }
     });
+}
+
+function longestCommonPrefix(words){
+    // check border cases size 1 array and empty first word)
+    if (!words[0] || words.length ==  1) return words[0] || "";
+    let i = 0;
+    // while all words have the same character at position i, increment i
+    while(words[0][i] && words.every(w => w[i] === words[0][i]))
+      i++;
+    
+    // prefix is the substring from the beginning to the last successfully checked i
+    return words[0].substr(0, i);
+  }
+
+function splitArrIntoPairs(initialArray) {
+    return initialArray.reduce(function(result, value, index, array) {
+        if (index % 2 === 0)
+          result.push(array.slice(index, index + 2));
+        return result;
+      }, []);
+}
+
+const main = async () => {
+    let urlArray = await csv().fromFile(csvFilePath);
+
+    // STEP 1: Remove search part
+    urlArray = urlArray.map(x => { return { "url": x.req.url.split("?")[0], "count": Number(x["count(*)"]) } })
+
+    // STEP 2: find the longest common prefix of the URLs
+    // this preix contains also the first collection in the path
+    let urlsToConsider = urlArray.map(x => { return x.url }).filter(x => !urlsToIgnore.includes(x))
+    let prefix = longestCommonPrefix(urlsToConsider)
+
+    // STEP 3: replace IDs considering the startCollectionLevel
+    urlArray.map(obj => {
+        let url = obj.url;
+
+        let prefixRegex = new RegExp(prefix, "i")
+
+        // url: "/v/dev-0.0/tenants/smartpatcher/subtenants/cmc-orthopaedie/calls/614c1e8ced7cb50019dfb88a"
+        // => url: ["/v/dev-0.0/tenants/", "smartpatcher", "subtenants", "cmc-orthopaedie", "calls", "614c1e8ced7cb50019dfb88a"]
+        urlArr = url.replace(prefixRegex,"").split("/")
+        // remove last "/" from prefix
+        urlArr.unshift(prefix.slice(0,-1))
+
+        let collectionLevels = splitArrIntoPairs(urlArr)
+        
+        // collectionLevels:
+        // 0:  ["/v/dev-0.0/tenants/", "smartpatcher"]
+        // 1: ["subtenants", "cmc-orthopaedie"]
+        // 2: ["calls", "614c1e8ced7cb50019dfb88a"]
+
+        for (let i = startCollectionLevel; i < collectionLevels.length; i++) {
+            if (collectionLevels[i].length ===1 ) {
+            }
+            if (collectionLevels[i].length > 1 && collectionLevels[i][0] !== "" && collectionLevels[i][1] !== "") {
+                collectionLevels[i][1] = variableReplacement
+            }
+        }
+
+        // => pathPartArrReplacedVars: ["/v/dev-0.0/tenants/", "smartpatcher", "subtenants", "XXXXX", "calls", "XXXXX"]
+        let urlArrReplacedVars = collectionLevels.flat().filter((x) => { return x !== "" })
+
+        //join back the strings
+        url = urlArrReplacedVars.join("/")
+
+        obj.url = url
+        return obj;
+    })
+
+    // TODO: just for testing, remove
+    //console.log(urlArray.slice(0,9))
 
     // sum count by url (now with duplicates)
     let counts = {}
     urlArray.forEach(function (x) { counts[x.url] = (counts[x.url] || 0) + x.count; });
 
+    // TODO: just for testing, remove
+    //urlArray = Object.keys(counts).sort();
+    
+    // convert back to an array
+    urlArray = Object.keys(counts).map((x) => {
+        return { "url": x, "count": counts[x] }
+    }).sort((a,b) => (a.url > b.url) ? 1 : ((b.url > a.url) ? -1 : 0))
+    
 
     //save to json file
-    jsonfile.writeFile(saveToFile, counts, { spaces: 2 }, function (err) {
+    jsonfile.writeFile(saveToFile, urlArray, { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
 
