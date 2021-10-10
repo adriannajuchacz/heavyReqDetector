@@ -12,11 +12,11 @@ const jsonfile = require('jsonfile')
 /**
  * csvFilePath must be CSV File with the following format "/v/dev-0.0/tenants/dashboard/events,2199"
  */
-const csvFilePath = '../data/urls.csv'
+const csvFilePath = './data/urls.csv'
 /**
  * saveToFile is the name of a JSON file to which the grouped URLs should be saved.
  */
-const saveToFile = '../data/groupedUrls.json'
+const saveToFile = './data/groupedUrls.json'
 /**
  * variableReplacement is a string that all variables in the URLs will be replaced with
  * * e.g. "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-10909/calls/614c1ea7ed7cb50019dfb8b0"
@@ -36,11 +36,6 @@ const variableReplacement = "XXXXX"
  */
 const startCollectionLevel = 1
 const urlsToIgnore = ["/", ""]
-
-csv()
-    .fromFile(csvFilePath)
-    .then((jsonObj) => {
-    })
 
 function longestCommonPrefix(words){
     // check border cases size 1 array and empty first word)
