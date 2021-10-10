@@ -1,19 +1,11 @@
-var awsCli = require('aws-cli-js');
-var Options = awsCli.Options;
-var Aws = awsCli.Aws;
+import * as urlGrouping from './urlGrouping'
 
-var options = new Options(
-    process.env.ACCESS_KEY,         /* accessKey    */ 
-    process.env.SECRET_KEY,         /* secretKey    */ 
-    null,                           /* sessionToken */ 
-    null,                           /* currentWorkingDirectory */ 
-    'aws'                           /* cliPath */ 
-);
+const main = async () => {
 
-var aws = new Aws(options);
+    // STEP 1: fetch data and save to ../data/urls.csv
+    // STEP 2: group & count URLs, save result to the ../data/groupedUrls.json
+    urlGrouping.groupAndCountUrls();
+    // STEP 3: translate URLs to Regex
+}
 
-aws.command('ec2 describe-images').then(function (data) {
-    console.log('data = ', data);
-}).catch((e) => {
-    console.log(e)
-});
+main()
