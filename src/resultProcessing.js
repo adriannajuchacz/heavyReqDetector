@@ -1,7 +1,7 @@
 const jsonfile = require('jsonfile');
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 
-async function processData(urlArray) {
+async function processAndExport(urlArray) {
     jsonfile.readFile("../data/urlsWithData.json", function (obj) {
         urlArray = obj
         for (let i = 0; i < urlArray.length; i++) {
@@ -59,5 +59,5 @@ async function processData(urlArray) {
 }
 
 module.exports = {
-    processData
+    processAndExport
 };
