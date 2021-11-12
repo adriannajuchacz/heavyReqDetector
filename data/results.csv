@@ -1,0 +1,20 @@
+symbol,url,optimization potential,cumulated response time,median,top 5%,top 1%,top 0.5%
+A,/v/dev-0.0/tenants/smartpatcher/subtenants,31333827752.308,929043.8315,13.6589,218.3877,579.8276,678.7305
+B,/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/users,19118515495.398193,497898.49600000004,11.8965,207.1504,511.9496,609.6183
+C,/v/dev-0.0/tenants/dashboard/events,10401802054.2072,15338.9046,1,12,189,299
+D,/v/dev-0.0/tenants/eon/subtenants,10118445080.759167,1166.1993,3,175,1157,1157
+E,/v/dev-0.0/tenants/system/status,3353235993.8649006,4807.9876,2,93,202,297
+F,/v/dev-0.0/tenants/dashboard/utterances,2638236266.62,15386.9571,3,79,200,293
+G,/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/calls,2439061900.8834186,578231.7146000001,39.8588,397.3219,769.8678,873.2426
+H,/v/dev-0.0/tenants/dashboard/statistics,745857029.8816001,1339.0034,2,103,208,208
+I,/v/dev-0.0/tenants,575471835.0289071,15523.893,12.8249,205.0543,561.8484,678.7305
+J,/v/dev-0.0/tenants/bmg/subtenants,285660989.4264328,8756.9262,8,116,307,469
+K,/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/calls/XXXXX,123658923.97633696,9152.582,18.9827,214.9306,605.9498,709.6119
+L,/v/dev-0.0/tenants/bmg/subtenants/XXXXX/calls,75847869.20922717,5435.9943,9,109,302,309
+M,/v/dev-0.0/tenants/eon/callback-requests,5940465.3,286.97900000000004,2,15,96,115
+N,/v/dev-0.0/tenants/eon/test,959053.3152070312,4098,160,986,986,986
+O,/v/dev-0.0/tenants/authentication/token,464230.88715419266,9824.9994,447,1616,1616,1616
+P,/v/dev-0.0/tenants/countandcare/meter-readings,2838,2838,2838,2838,2838,2838
+Q,/v/dev-0.0/tenants/dashboard/transactions,2148.1481481481483,58,3,10,10,10
+R,/v/dev-0.0/tenants/smartpatcher/subtenants/XXXXX/callers/XXXXX,277.6993690209647,23,17,39,39,39
+S,/v/dev-0.0/tenants/eon/callback-requests/XXXXX,16.975462962962965,3.6667,3,5,5,5

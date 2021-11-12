@@ -11,10 +11,9 @@ const main = async () => {
     // STEP 3: generate Statistics (result)
     urlArray = await generateRegex(urlArray)
     urlArray = await fetchResponseTimeData(urlArray)
-    // STEP 4: process 
+    // STEP 4: process & save to csv
     urlArray = await processData(urlArray)
     // TODO:
-    // STEP 5: export to csv
     
 }
 
