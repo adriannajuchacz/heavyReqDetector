@@ -12,9 +12,7 @@ const main = async () => {
     urlArray = await generateRegex(urlArray)
     urlArray = await fetchResponseTimeData(urlArray)
     // STEP 4: process & save to csv
-    urlArray = await processData(urlArray)
-    // TODO:
-    
+    urlArray = await processAndExport(urlArray)
 }
 
 main()
