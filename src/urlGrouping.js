@@ -69,9 +69,9 @@ function splitArrIntoPairs(initialArray) {
  */
 async function groupAndCountUrls() {
     let urlArray = await csv().fromFile(csvFilePath);
-
+    
     // STEP 1: Remove search part
-    urlArray = urlArray.map(x => { return { "url": x.req.url.split("?")[0], "count": Number(x["count(*)"]) } })
+    urlArray = urlArray.map(x => { return { "url": x["RequestUrl"].split("?")[0], "count": Number(x["RequestCount"]) } })
 
     // STEP 2: find the longest common prefix of the URLs
     // this preix contains also the first collection in the path

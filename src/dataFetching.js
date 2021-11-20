@@ -77,6 +77,7 @@ async function fetchResponseTimeData(urlArray) {
     jsonfile.writeFile("./data/urlsWithData.json", urlArray, { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
+    return urlArray;
 }
 module.exports = {
     fetchResponseTimeData
