@@ -5,8 +5,8 @@
  * @input  urls.csv with format "/v/dev-0.0/tenants/dashboard/events,2199"
  * @output saves a list of urls groupped by "praxis-XXXXX" into urls.json
  */
-const csv = require('csvtojson')
-const jsonfile = require('jsonfile')
+const csv = require('csvtojson');
+var fs = require('fs');
 
 // requires config
 const csvFilePath = 'urls.csv'
@@ -84,6 +84,7 @@ function replaceSearchVariablesInAString(searchPart) {
     return newSearchPart;
 }
 
+// TODO: remove
 function replaceSearchVariablesInAnArray(urlArray) {
     return urlArray.map(x => {
         let url = x.req.url;
@@ -184,7 +185,7 @@ const main = async () => {
     
 
     //save to json file
-    jsonfile.writeFile(saveToFile, urlArray, { spaces: 2 }, function (err) {
+    fs.writeFile(saveToFile, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
 

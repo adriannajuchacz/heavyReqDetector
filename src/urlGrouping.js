@@ -5,18 +5,10 @@
  * @input  urls.csv with format "/v/dev-0.0/tenants/dashboard/events,2199"
  * @output saves a list of urls groupped by "praxis-XXXXX" into {saveToFile}
  */
-const csv = require('csvtojson')
-const jsonfile = require('jsonfile')
+var fs = require('fs');
+const mkdirp = require('mkdirp');
 
 // CONFIG
-/**
- * csvFilePath must be CSV File with the following format "/v/dev-0.0/tenants/dashboard/events,2199"
- */
-const csvFilePath = './data/urls.csv'
-/**
- * saveToFile is the name of a JSON file to which the grouped URLs should be saved.
- */
-const saveToFile = './data/groupedUrls.json'
 /**
  * variableReplacement is a string that all variables in the URLs will be replaced with
  * * e.g. "/v/dev-0.0/tenants/smartpatcher/subtenants/praxis-10909/calls/614c1ea7ed7cb50019dfb8b0"
@@ -67,18 +59,13 @@ function splitArrIntoPairs(initialArray) {
  * @param {string} saveToFile 
  * @param {string} variableReplacement 
  */
-async function groupAndCountUrls() {
-    let urlArray = await csv().fromFile(csvFilePath);
-    
-    // STEP 1: Remove search part
-    urlArray = urlArray.map(x => { return { "url": x["RequestUrl"].split("?")[0], "count": Number(x["RequestCount"]) } })
-
-    // STEP 2: find the longest common prefix of the URLs
+async function groupAndCountUrls(urlArray, timestamp) {   
+    // find the longest common prefix of the URLs
     // this preix contains also the first collection in the path
     let urlsToConsider = urlArray.map(x => { return x.url }).filter(x => !urlsToIgnore.includes(x))
     let prefix = longestCommonPrefix(urlsToConsider)
 
-    // STEP 3: replace IDs considering the startCollectionLevel
+    // replace IDs considering the startCollectionLevel
     urlArray.map(obj => {
         let url = obj.url;
 
@@ -118,18 +105,15 @@ async function groupAndCountUrls() {
     // sum count by url (now with duplicates)
     let counts = {}
     urlArray.forEach(function (x) { counts[x.url] = (counts[x.url] || 0) + x.count; });
-
-    // TODO: just for testing, remove
-    //urlArray = Object.keys(counts).sort();
     
     // convert back to an array
     urlArray = Object.keys(counts).map((x) => {
         return { "url": x, "count": counts[x] }
     }).sort((a,b) => (a.url > b.url) ? 1 : ((b.url > a.url) ? -1 : 0))
-    
 
     //save to json file
-    jsonfile.writeFile(saveToFile, urlArray, { spaces: 2 }, function (err) {
+    await mkdirp(`./data/results/${timestamp}`);
+    fs.writeFile(`./data/results/${timestamp}/groupedUrls.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
     

@@ -1,23 +1,37 @@
 const { groupAndCountUrls } = require('./urlGrouping.js');
 const { generateRegex } = require('./regexGenerating.js');
-const { fetchResponseTimeData } = require('./dataFetching.js');
-const { processAndExport } = require('./resultProcessing.js');
+const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
+const { detectPeak, processAndExport } = require('./resultProcessing.js');
 
 const main = async () => {
-    // TODO:
-    // read the time_period & interval from conf
-    // fetch the request Count per $interval for the $time_period
-    // fetch the CPU usage per $interval for the $time_period
-    // detect peak; find time point of the peak(s)
-    // fetch request data (endpoint, count, ti) and save to ../data/urls.csv
+    // fetching data for the peak detection
+    console.log("Fetching data for the peak detection...")
+    await fetchRequestCount()
+    await fetchCPUValues()
     
-    // group & count URLs, save result to the ../data/groupedUrls.json
-    let urlArray = await groupAndCountUrls();
-    // generate Statistics (result)
-    urlArray = await generateRegex(urlArray)
-    urlArray = await fetchResponseTimeData(urlArray)
-    // process & save to csv
-    await processAndExport(urlArray)
+    // peak detection
+    let peaks = await detectPeak()
+    console.log("Detected the following peaks:")
+    peaks.forEach(element => {
+        console.log(`Timestamp: ${new Date(element.timestamp).toLocaleString()} => ${parseFloat(element.difference*100).toFixed(2)}% higher CPU than expected`)
+    });
+
+    console.log("Fetching data for the load analysis...")    
+    await peaks.forEach(async (element) => {
+        // fetch the list of received requests for each timestamp
+        let urlArray = await fetchURLs(element.timestamp);
+
+        // group & count URLs, save result to the ../data/groupedUrls.json
+        urlArray = await groupAndCountUrls(urlArray, element.timestamp);
+     
+        // generate Statistics (result)
+        urlArray = await generateRegex(urlArray)
+        urlArray = await fetchResponseTimeData(urlArray, element.timestamp)
+        // process & save to csv
+        await processAndExport(urlArray)
+        
+    })
+ 
 }
 
 main()

@@ -1,4 +1,52 @@
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+var regression = require('regression');
+var fs = require('fs');
+
+var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
+
+async function detectPeak() {
+    let requestCount = JSON.parse(fs.readFileSync('data/requestCount.json', 'utf8'));
+    let CPUValues = JSON.parse(fs.readFileSync('data/CPUValues.json', 'utf8'));
+
+    // if requestCount[0].timestamp !== CPUValues[0].timestamp
+    // merge requests and CPU values
+    let merged = []
+    // format: [ [0, 1], [32, 67], [12, 79] ]
+    let array_for_regression = []
+    for (let i = 0; i < requestCount.length; i++) {
+        if (requestCount[i].timestamp !== CPUValues[i].timestamp) {
+            throw new Error('Something went wrong with the fetching the CPUValues & RequestCount');
+        }
+        merged.push({
+            timestamp: requestCount[i].timestamp,
+            cpuValue: CPUValues[i].value, 
+            requestCount: requestCount[i].count
+        })
+        array_for_regression.push([requestCount[i].count, CPUValues[i].value])
+    }
+    // calculate linear regression
+    const result = regression.linear(array_for_regression, {
+        order: 2,
+        precision: 4,
+      })
+    
+    // calculate expected values and difference
+    
+    // TODO: remove change
+    for (let i = 0; i < merged.length; i++) {
+        //calculate expected metric value
+        let expectedValue = result.predict(merged[i].requestCount)[1]
+
+        let difference = merged[i].cpuValue/expectedValue;
+        merged[i]["difference"] = difference;
+    }
+    // TODO: calculate variance
+    // sort by difference DESC
+    merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
+    // return 3 highest peaks
+    return merged.slice(0, config.number_of_points)//.map(x => { return x.timestamp });
+}
+
 
 async function processAndExport(urlArray) {
     for (let i = 0; i < urlArray.length; i++) {
@@ -55,5 +103,6 @@ async function processAndExport(urlArray) {
 }
 
 module.exports = {
+    detectPeak,
     processAndExport
 };
