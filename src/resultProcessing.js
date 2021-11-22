@@ -1,6 +1,7 @@
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 var regression = require('regression');
 var fs = require('fs');
+const mkdirp = require('mkdirp');
 
 var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
 
@@ -8,6 +9,7 @@ async function detectPeak() {
     let requestCount = JSON.parse(fs.readFileSync('data/requestCount.json', 'utf8'));
     let CPUValues = JSON.parse(fs.readFileSync('data/CPUValues.json', 'utf8'));
 
+    // TODO:
     // if requestCount[0].timestamp !== CPUValues[0].timestamp
     // merge requests and CPU values
     let merged = []
@@ -48,7 +50,8 @@ async function detectPeak() {
 }
 
 
-async function processAndExport(urlArray) {
+async function processAndExport(timestamp) {
+    let urlArray = JSON.parse(fs.readFileSync(`./data/mid-results/${timestamp}/urlsWithData.json`, 'utf8'));
     for (let i = 0; i < urlArray.length; i++) {
         // calculate cumulated_response_time
         let weight = urlArray[i]["count"] * urlArray[i]["avg(responseTime)"]
@@ -88,9 +91,10 @@ async function processAndExport(urlArray) {
     })
     // WRITE THE RESULT TO A CSV FILE
     try {
+        await mkdirp(`./data/results`);
         const csvWriter = createCsvWriter({
             header: Object.keys(resultArr[0]).map((k) => { return { id: k, title: k } }),
-            path: 'data/results.csv'
+            path: `./data/results/${timestamp}.csv`
         });
         csvWriter.writeRecords(resultArr)       // returns a promise
             .then(() => {

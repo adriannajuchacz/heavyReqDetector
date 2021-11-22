@@ -1,6 +1,6 @@
 var awsCli = require('aws-cli-js');
 var fs = require('fs');
-const jsonfile = require('jsonfile');
+const { getPeakUTCs } = require('./helpers.js');
 
 var Options = awsCli.Options;
 var Aws = awsCli.Aws;
@@ -20,12 +20,6 @@ Date.prototype.addHours = function(h) {
     this.setTime(this.getTime() + (h*60*60*1000));
     return this;
 }
-
-Date.prototype.substractMinutes = function(m) {
-    this.setTime(this.getTime() - (m*60*1000));
-    return this;
-}
-
 
 async function fetchRequestCount() { 
     const start_time_UTC = new Date(config.start_time.split('+')[0]).getTime()
@@ -57,7 +51,7 @@ async function fetchRequestCount() {
     }
 
     //save to json file
-    fs.writeFile("./data/requestCount.json", JSON.stringify(res), function (err) {
+    fs.writeFileSync("./data/requestCount.json", JSON.stringify(res), function (err) {
         if (err) console.error(err)
     })
     return res;
@@ -79,7 +73,7 @@ async function fetchCPUValues() {
     });
 
     //save to json file
-    fs.writeFile("./data/CPUValues.json", JSON.stringify(res), function (err) {
+    fs.writeFileSync("./data/CPUValues.json", JSON.stringify(res), function (err) {
         if (err) console.error(err)
     })
     return res;
@@ -87,8 +81,7 @@ async function fetchCPUValues() {
 
 async function fetchURLs(timestamp) { 
         // calculate the start_time and end_time (UTC) of the peak 
-        const peak_start_time_UTC = new Date(timestamp).substractMinutes(config.peak_duration_in_min).getTime()
-        const peak_end_time_UTC = new Date(timestamp).getTime()
+        const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
         // start the query 
         let query_id
         await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${peak_start_time_UTC} --end-time ${peak_end_time_UTC} --query-string 'fields @timestamp, req.url as RequestUrl | filter @logStream like "biz" and message like "request completed" | stats count(*) as RequestCount by req.url | limit 10000'`).then(function (data) {
@@ -118,10 +111,12 @@ async function fetchURLs(timestamp) {
         return res;
 }
 
-async function runQuery(regex) {
+async function runQuery(regex, timestamp) {
+    // calculate the start_time and end_time (UTC) of the peak 
+    const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
     // start the query 
     let query_id
-    await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${start_time_UTC} --end-time ${end_time_UTC} --query-string 'fields @timestamp, @message, responseTime | filter @logStream like "biz" and message like "request completed" and req.url like ${regex} | stats avg(responseTime), pct(responseTime, 95), pct(responseTime, 99), pct(responseTime, 99.5), pct(responseTime, 50)'`).then(function (data) {
+    await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${peak_start_time_UTC} --end-time ${peak_end_time_UTC} --query-string 'fields @timestamp, @message, responseTime | filter @logStream like "biz" and message like "request completed" and req.url like ${regex} | stats avg(responseTime), pct(responseTime, 95), pct(responseTime, 99), pct(responseTime, 99.5), pct(responseTime, 50)'`).then(function (data) {
         query_id = data.object.queryId
     }).catch((e) => {
         console.log(e)
@@ -166,16 +161,15 @@ async function runQuery(regex) {
  * @param {array} urlArray 
  */
 async function fetchResponseTimeData(urlArray, timestamp) {
-    // TODO: calculate start_time and end_time of a peak
     for (let i = 0; i < urlArray.length; i++) {
         console.log(`processing: ${i+1}/${urlArray.length}`)
-        let statResultArr = await runQuery(urlArray[i].regex)
+        let statResultArr = await runQuery(urlArray[i].regex, timestamp)
         statResultArr.forEach(el => {
             urlArray[i][el.field] = parseFloat(el.value)
         });
     }
     //save to json file
-    fs.writeFile("./data/urlsWithData.json", JSON.stringify(urlArray), { spaces: 2 }, function (err) {
+    fs.writeFileSync(`./data/mid-results/${timestamp}/urlsWithData.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
     return urlArray;

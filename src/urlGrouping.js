@@ -112,12 +112,10 @@ async function groupAndCountUrls(urlArray, timestamp) {
     }).sort((a,b) => (a.url > b.url) ? 1 : ((b.url > a.url) ? -1 : 0))
 
     //save to json file
-    await mkdirp(`./data/results/${timestamp}`);
-    fs.writeFile(`./data/results/${timestamp}/groupedUrls.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
+    await mkdirp(`./data/mid-results/${timestamp}`);
+    fs.writeFileSync(`./data/mid-results/${timestamp}/groupedUrls.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
-    
-    return urlArray;
 }
 
 module.exports = {

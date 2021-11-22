@@ -1,5 +1,5 @@
 const { groupAndCountUrls } = require('./urlGrouping.js');
-const { generateRegex } = require('./regexGenerating.js');
+const { generateRegex } = require('./helpers.js');
 const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
 const { detectPeak, processAndExport } = require('./resultProcessing.js');
 
@@ -17,19 +17,18 @@ const main = async () => {
     });
 
     console.log("Fetching data for the load analysis...")    
-    await peaks.forEach(async (element) => {
+    await peaks.forEach(async (e) => {
         // fetch the list of received requests for each timestamp
-        let urlArray = await fetchURLs(element.timestamp);
-
+        let urlArray = await fetchURLs(e.timestamp);
         // group & count URLs, save result to the ../data/groupedUrls.json
-        urlArray = await groupAndCountUrls(urlArray, element.timestamp);
+        await groupAndCountUrls(urlArray, e.timestamp);
      
         // generate Statistics (result)
-        urlArray = await generateRegex(urlArray)
-        urlArray = await fetchResponseTimeData(urlArray, element.timestamp)
+        urlArray = await generateRegex(e.timestamp)
+        await fetchResponseTimeData(urlArray, e.timestamp)
+
         // process & save to csv
-        await processAndExport(urlArray)
-        
+        await processAndExport(e.timestamp)  
     })
  
 }

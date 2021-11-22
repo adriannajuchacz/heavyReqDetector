@@ -185,7 +185,7 @@ const main = async () => {
     
 
     //save to json file
-    fs.writeFile(saveToFile, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
+    fs.writeFileSync(saveToFile, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
         if (err) console.error(err)
     })
 
