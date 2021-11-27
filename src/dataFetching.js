@@ -1,6 +1,5 @@
 var awsCli = require('aws-cli-js');
-var fs = require('fs');
-const { getPeakUTCs } = require('./helpers.js');
+const { getPeakUTCs, readJSONfromFile, writeJSONToFile } = require('./helpers.js');
 
 var Options = awsCli.Options;
 var Aws = awsCli.Aws;
@@ -14,7 +13,7 @@ var options = new Options(
 );
 
 var aws = new Aws(options);
-var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
+var config = readJSONfromFile('config/config_file.json');
 
 Date.prototype.addHours = function(h) {
     this.setTime(this.getTime() + (h*60*60*1000));
@@ -50,10 +49,7 @@ async function fetchRequestCount() {
         });
     }
 
-    //save to json file
-    fs.writeFileSync("./data/requestCount.json", JSON.stringify(res), function (err) {
-        if (err) console.error(err)
-    })
+    await writeJSONToFile(`./data/peak_detection`, `request_count.json`, res)
     return res;
 }
 
@@ -72,10 +68,7 @@ async function fetchCPUValues() {
         console.log(e)
     });
 
-    //save to json file
-    fs.writeFileSync("./data/CPUValues.json", JSON.stringify(res), function (err) {
-        if (err) console.error(err)
-    })
+    await writeJSONToFile(`./data/peak_detection`, `CPU_values.json`, res)
     return res;
 }
 
@@ -168,10 +161,8 @@ async function fetchResponseTimeData(urlArray, timestamp) {
             urlArray[i][el.field] = parseFloat(el.value)
         });
     }
-    //save to json file
-    fs.writeFileSync(`./data/mid-results/${timestamp}/urlsWithData.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
-        if (err) console.error(err)
-    })
+
+    await writeJSONToFile(`./data/mid-results/${timestamp}`, `endpoints_with_stats.json`, urlArray)
     return urlArray;
 }
 module.exports = {

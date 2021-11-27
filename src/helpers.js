@@ -1,6 +1,21 @@
 var fs = require('fs');
-const { variableReplacement } = require('./urlGrouping.js');
-var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
+const mkdirp = require('mkdirp');
+const variableReplacement = "XXXXX"
+
+function readJSONfromFile(path) {
+   return JSON.parse(fs.readFileSync(path, 'utf8'));
+}
+
+async function writeJSONToFile(dirPath, filename, obj) {
+   await mkdirp(dirPath);
+   //save to json file
+   let filePath = dirPath + "/" + filename;
+   fs.writeFileSync(filePath, JSON.stringify(obj), function (err) {
+      if (err) console.error(err)
+   })
+}
+
+var config = readJSONfromFile('config/config_file.json');
 /**
  * Function takes an array of the following format:
  * { "url": "/v/dev-0.0/tenants", "count": 330 }
@@ -21,7 +36,7 @@ var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
  * @param {array} urlArray 
  */
  async function generateRegex(timestamp) {
-   let urlArray = JSON.parse(fs.readFileSync(`./data/mid-results/${timestamp}/groupedUrls.json`, 'utf8'));
+   let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/grouped_urls_with_count.json`);
     return urlArray.map((urlObj) => {
        let variableReplacementRegex = new RegExp(variableReplacement, "g")
        let regex = new RegExp(urlObj.url.replace(variableReplacementRegex, "(.*)"))
@@ -46,5 +61,8 @@ function getPeakUTCs(timestamp) {
 
 module.exports = {
     generateRegex,
-    getPeakUTCs
+    getPeakUTCs,
+    readJSONfromFile,
+    writeJSONToFile,
+    variableReplacement
 };

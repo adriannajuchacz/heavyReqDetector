@@ -1,13 +1,13 @@
 const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 var regression = require('regression');
-var fs = require('fs');
 const mkdirp = require('mkdirp');
+const { readJSONfromFile, writeJSONToFile } = require('./helpers.js');
 
-var config = JSON.parse(fs.readFileSync('config/config_file.json', 'utf8'));
+var config = readJSONfromFile('config/config_file.json');
 
 async function detectPeak() {
-    let requestCount = JSON.parse(fs.readFileSync('data/requestCount.json', 'utf8'));
-    let CPUValues = JSON.parse(fs.readFileSync('data/CPUValues.json', 'utf8'));
+    let requestCount = readJSONfromFile('data/peak_detection/request_count.json');
+    let CPUValues = readJSONfromFile('data/peak_detection/CPU_values.json');
 
     // TODO:
     // if requestCount[0].timestamp !== CPUValues[0].timestamp
@@ -45,13 +45,18 @@ async function detectPeak() {
     // TODO: calculate variance
     // sort by difference DESC
     merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
+    await writeJSONToFile(`./data/peak_detection`, `sorted_peaks.json`, merged)
+
     // return 3 highest peaks
-    return merged.slice(0, config.number_of_points)//.map(x => { return x.timestamp });
+    let peaks = merged.slice(0, config.number_of_points)
+    await writeJSONToFile(`./data/results`, `peaks_data.json`, peaks)
+
+    return peaks;
 }
 
 
 async function processAndExport(timestamp) {
-    let urlArray = JSON.parse(fs.readFileSync(`./data/mid-results/${timestamp}/urlsWithData.json`, 'utf8'));
+    let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/endpoints_with_stats.json`);
     for (let i = 0; i < urlArray.length; i++) {
         // calculate cumulated_response_time
         let weight = urlArray[i]["count"] * urlArray[i]["avg(responseTime)"]
@@ -75,7 +80,6 @@ async function processAndExport(timestamp) {
         urlArray[i]["symbol"] = String.fromCharCode(97 + i).toUpperCase()
     }
 
-
     // MAP A RESULT OBJECT FROM URLARRAY
     let resultArr = urlArray.map((o) => {
         return {
@@ -83,6 +87,7 @@ async function processAndExport(timestamp) {
             "url": o.url,
             "optimization potential": o.optimization_potential,
             "cumulated response time": o.cumulated_response_time,
+            "count": o.count,
             "median": o['pct(responseTime, 50)'],
             "top 5%": o['pct(responseTime, 95)'],
             "top 1%": o['pct(responseTime, 99)'],

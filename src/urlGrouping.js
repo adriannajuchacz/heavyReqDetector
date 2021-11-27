@@ -5,8 +5,7 @@
  * @input  urls.csv with format "/v/dev-0.0/tenants/dashboard/events,2199"
  * @output saves a list of urls groupped by "praxis-XXXXX" into {saveToFile}
  */
-var fs = require('fs');
-const mkdirp = require('mkdirp');
+const { writeJSONToFile, variableReplacement } = require('./helpers.js');
 
 // CONFIG
 /**
@@ -15,7 +14,6 @@ const mkdirp = require('mkdirp');
  * variableReplacement = "XXXXX"
  * =>  "/v/dev-0.0/tenants/XXXXX/subtenants/XXXXX/calls/XXXXX"
  */
-const variableReplacement = "XXXXX"
 
 /**
  * Defines granularity of the replacement of variables from the url's path.
@@ -111,14 +109,9 @@ async function groupAndCountUrls(urlArray, timestamp) {
         return { "url": x, "count": counts[x] }
     }).sort((a,b) => (a.url > b.url) ? 1 : ((b.url > a.url) ? -1 : 0))
 
-    //save to json file
-    await mkdirp(`./data/mid-results/${timestamp}`);
-    fs.writeFileSync(`./data/mid-results/${timestamp}/groupedUrls.json`, JSON.stringify(urlArray), { spaces: 2 }, function (err) {
-        if (err) console.error(err)
-    })
+    await writeJSONToFile(`./data/mid-results/${timestamp}`, `grouped_urls_with_count.json`, urlArray)
 }
 
 module.exports = {
-    groupAndCountUrls,
-    variableReplacement
+    groupAndCountUrls
 };

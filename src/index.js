@@ -1,7 +1,10 @@
 const { groupAndCountUrls } = require('./urlGrouping.js');
-const { generateRegex } = require('./helpers.js');
+const { generateRegex, readJSONfromFile } = require('./helpers.js');
 const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
 const { detectPeak, processAndExport } = require('./resultProcessing.js');
+
+// options: peak_detection
+let startFrom = ""
 
 const main = async () => {
     // fetching data for the peak detection
@@ -10,12 +13,12 @@ const main = async () => {
     await fetchCPUValues()
     
     // peak detection
-    let peaks = await detectPeak()
+    let peaks = (startFrom === "peak_detection") ? readJSONfromFile('data/results/peaks_data.json') : await detectPeak()
     console.log("Detected the following peaks:")
     peaks.forEach(element => {
         console.log(`Timestamp: ${new Date(element.timestamp).toLocaleString()} => ${parseFloat(element.difference*100).toFixed(2)}% higher CPU than expected`)
     });
-
+    
     console.log("Fetching data for the load analysis...")    
     await peaks.forEach(async (e) => {
         // fetch the list of received requests for each timestamp
@@ -26,7 +29,7 @@ const main = async () => {
         // generate Statistics (result)
         urlArray = await generateRegex(e.timestamp)
         await fetchResponseTimeData(urlArray, e.timestamp)
-
+        
         // process & save to csv
         await processAndExport(e.timestamp)  
     })
