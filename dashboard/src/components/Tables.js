@@ -6,7 +6,8 @@ import BTable from 'react-bootstrap/Table';
 
 import { useTable } from 'react-table'
 
-import makeData from './makeData'
+import peaks from '../data/peaks.json';
+import non_peaks from '../data/non_peaks.json';
 
 function Table({ columns, data }) {
   // Use the state and functions returned from useTable to build your UI
@@ -53,48 +54,52 @@ function Tables() {
   const columns = React.useMemo(
     () => [
       {
-        Header: 'Name',
-        columns: [
-          {
-            Header: 'First Name',
-            accessor: 'firstName',
-          },
-          {
-            Header: 'Last Name',
-            accessor: 'lastName',
-          },
-        ],
+        Header: 'url',
+        accessor: 'url',
       },
       {
-        Header: 'Info',
-        columns: [
-          {
-            Header: 'Age',
-            accessor: 'age',
-          },
-          {
-            Header: 'Visits',
-            accessor: 'visits',
-          },
-          {
-            Header: 'Status',
-            accessor: 'status',
-          },
-          {
-            Header: 'Profile Progress',
-            accessor: 'progress',
-          },
-        ],
+        Header: 'count',
+        accessor: 'count',
       },
+      {
+        Header: 'avg(responseTime)',
+        accessor: 'avg(responseTime)',
+      },
+      {
+        Header: 'median',
+        accessor: 'pct(responseTime, 50)',
+      },
+      {
+        Header: 'pct(responseTime, 95)',
+        accessor: 'pct(responseTime, 95)',
+      },
+      {
+        Header: 'pct(responseTime, 99)',
+        accessor: 'pct(responseTime, 99)',
+      },
+      {
+        Header: 'pct(responseTime, 99.5)',
+        accessor: 'pct(responseTime, 995)',
+      }
     ],
     []
   )
 
-  const data = React.useMemo(() => makeData(20), [])
-
   return (
     <div>
-      <Table columns={columns} data={data} />
+      {peaks.map((peak) => (
+        <div>
+          <h3>{`Expected CPU: ${peak.cpuData.expected_CPU}, Actual: ${peak.cpuData.actual_CPU}`}</h3>
+          <Table columns={columns} data={peak.data} />
+        </div>
+      ))}
+
+      {non_peaks.map((peak) => (
+        <div>
+          <h3>{`Expected CPU: ${peak.cpuData.expected_CPU}, Actual: ${peak.cpuData.actual_CPU}`}</h3>
+          <Table columns={columns} data={peak.data} />
+        </div>
+      ))}
     </div>
   )
 }
