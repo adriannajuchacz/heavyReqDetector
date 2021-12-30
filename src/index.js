@@ -1,10 +1,7 @@
 const { groupAndCountUrls } = require('./urlGrouping.js');
 const { generateRegex, readJSONfromFile } = require('./helpers.js');
 const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
-const { detectPeak, processAndExport } = require('./resultProcessing.js');
-
-// options: peak_detection
-let startFrom = ""
+const { detectPeak, processAndExport, transferDataToDashboard } = require('./resultProcessing.js');
 
 const main = async () => {
     // fetching data for the peak detection
@@ -13,26 +10,29 @@ const main = async () => {
     await fetchCPUValues()
     
     // peak detection
-    let peaks = (startFrom === "peak_detection") ? readJSONfromFile('data/results/peaks_data.json') : await detectPeak()
-    console.log("Detected the following peaks:")
-    peaks.forEach(element => {
-        console.log(`Timestamp: ${new Date(element.timestamp).toLocaleString()} => ${parseFloat(element.difference*100).toFixed(2)}% higher CPU than expected`)
+    let all_data_points = await detectPeak()
+    console.log("Detected the following data points:")
+    all_data_points.forEach(element => {
+        console.log(`Timestamp: ${new Date(element.timestamp).toLocaleString()} => expected CPU: ${parseFloat(element.cpuValue).toFixed(2)}%, actual CPU: ${parseFloat(element.expectedValue).toFixed(2)}%`)
     });
     
     console.log("Fetching data for the load analysis...")    
-    await peaks.forEach(async (e) => {
-        // fetch the list of received requests for each timestamp
-        let urlArray = await fetchURLs(e.timestamp);
-        // group & count URLs, save result to the ../data/groupedUrls.json
-        await groupAndCountUrls(urlArray, e.timestamp);
-     
-        // generate Statistics (result)
-        urlArray = await generateRegex(e.timestamp)
-        await fetchResponseTimeData(urlArray, e.timestamp)
-        
-        // process & save to csv
-        await processAndExport(e.timestamp)  
-    })
+    await Promise.all(all_data_points.map(async (e) => {
+         // fetch the list of received requests for each timestamp
+         let urlArray = await fetchURLs(e.timestamp);
+         // group & count URLs, save result to the ../data/groupedUrls.json
+         await groupAndCountUrls(urlArray, e.timestamp);
+      
+         // generate Statistics (result)
+         urlArray = await generateRegex(e.timestamp)
+         await fetchResponseTimeData(urlArray, e.timestamp)
+         
+         // process & save to csv
+         await processAndExport(e.timestamp)  
+      }));
+    console.log("Transferring the data to the dashboard")
+    await transferDataToDashboard()
+    console.log("Run npm run start in /dashboard")
  
 }
 

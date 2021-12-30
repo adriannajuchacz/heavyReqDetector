@@ -33,25 +33,28 @@ async function detectPeak() {
       })
     
     // calculate expected values and difference
-    
-    // TODO: remove change
     for (let i = 0; i < merged.length; i++) {
         //calculate expected metric value
         let expectedValue = result.predict(merged[i].requestCount)[1]
 
         let difference = merged[i].cpuValue/expectedValue;
         merged[i]["difference"] = difference;
+        merged[i]["expectedValue"] = expectedValue;
     }
-    // TODO: calculate variance
+
     // sort by difference DESC
     merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
     await writeJSONToFile(`./data/peak_detection`, `sorted_peaks.json`, merged)
 
-    // return 3 highest peaks
+    // return 3 highest as peaks
     let peaks = merged.slice(0, config.number_of_points)
     await writeJSONToFile(`./data/results`, `peaks_data.json`, peaks)
 
-    return peaks;
+    // return 3 highest as non_peaks
+    let non_peaks = merged.slice((-1) * config.number_of_points)
+    await writeJSONToFile(`./data/results`, `non_peaks_data.json`, peaks)
+
+    return [...peaks, ...non_peaks];
 }
 
 
@@ -85,15 +88,19 @@ async function processAndExport(timestamp) {
         return {
             "symbol": o.symbol,
             "url": o.url,
-            "optimization potential": o.optimization_potential,
-            "cumulated response time": o.cumulated_response_time,
+            "optimization_potential": o.optimization_potential,
+            "cumulated_response_time": o.cumulated_response_time,
             "count": o.count,
-            "median": o['pct(responseTime, 50)'],
-            "top 5%": o['pct(responseTime, 95)'],
-            "top 1%": o['pct(responseTime, 99)'],
-            "top 0.5%": o['pct(responseTime, 99.5)']
+            "avg(responseTime)": o['pct(responseTime, 50)'],
+            "pct(responseTime, 95)": o['pct(responseTime, 95)'],
+            "pct(responseTime, 99)": o['pct(responseTime, 99)'],
+            "pct(responseTime, 995)": o['pct(responseTime, 99.5)']
         }
     })
+
+    // WRITE THE RESULT TO A JSON FILE
+    await writeJSONToFile(`./data/results`, `${timestamp}.json`, resultArr)
+    
     // WRITE THE RESULT TO A CSV FILE
     try {
         await mkdirp(`./data/results`);
@@ -111,7 +118,43 @@ async function processAndExport(timestamp) {
     }
 }
 
+async function transferDataToDashboard() {
+    let peaks = readJSONfromFile(`./data/results/peaks_data.json`);
+
+    let allPeaks = []
+    peaks.forEach(el => {
+        let data = readJSONfromFile(`./data/results/${el.timestamp}.json`);
+        let peakObj = {
+            "cpuData": {
+                "expected_CPU": parseFloat(el.expectedValue).toFixed(2),
+                "actual_CPU": parseFloat(el.cpuValue).toFixed(2),
+                "timestamp": el.timestamp
+            },
+            "data": data
+        }   
+        allPeaks.push(peakObj)     
+    });
+    await writeJSONToFile(`./dashboard/src/data`, `peaks.json`, allPeaks)
+
+    let non_peaks = readJSONfromFile(`./data/results/non_peaks_data.json`);
+    let allNonPeaks = []
+    non_peaks.forEach(el => {
+        let data = readJSONfromFile(`./data/results/${el.timestamp}.json`);
+        let obj = {
+            "cpuData": {
+                "expected_CPU": parseFloat(el.expectedValue).toFixed(2),
+                "actual_CPU": parseFloat(el.cpuValue).toFixed(2),
+                "timestamp": el.timestamp
+            },
+            "data": data
+        }   
+        allNonPeaks.push(obj)     
+    });
+    await writeJSONToFile(`./dashboard/src/data`, `non_peaks.json`, allNonPeaks)
+}
+
 module.exports = {
     detectPeak,
-    processAndExport
+    processAndExport,
+    transferDataToDashboard
 };
