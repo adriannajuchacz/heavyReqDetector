@@ -46,13 +46,13 @@ async function detectPeak() {
     merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
     await writeJSONToFile(`./data/peak_detection`, `sorted_peaks.json`, merged)
 
-    // return 3 highest as peaks
+    // return 3 top as peaks
     let peaks = merged.slice(0, config.number_of_points)
     await writeJSONToFile(`./data/results`, `peaks_data.json`, peaks)
 
-    // return 3 highest as non_peaks
+    // return 3 last as non_peaks
     let non_peaks = merged.slice((-1) * config.number_of_points)
-    await writeJSONToFile(`./data/results`, `non_peaks_data.json`, peaks)
+    await writeJSONToFile(`./data/results`, `non_peaks_data.json`, non_peaks)
 
     return [...peaks, ...non_peaks];
 }
@@ -100,22 +100,6 @@ async function processAndExport(timestamp) {
 
     // WRITE THE RESULT TO A JSON FILE
     await writeJSONToFile(`./data/results`, `${timestamp}.json`, resultArr)
-    
-    // WRITE THE RESULT TO A CSV FILE
-    try {
-        await mkdirp(`./data/results`);
-        const csvWriter = createCsvWriter({
-            header: Object.keys(resultArr[0]).map((k) => { return { id: k, title: k } }),
-            path: `./data/results/${timestamp}.csv`
-        });
-        csvWriter.writeRecords(resultArr)       // returns a promise
-            .then(() => {
-                console.log('...Done producing a result');
-            });
-
-    } catch (err) {
-        console.error(err);
-    }
 }
 
 async function transferDataToDashboard() {
