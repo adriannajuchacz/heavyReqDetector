@@ -58,16 +58,16 @@ function Tables() {
         accessor: 'url',
       },
       {
+        Header: 'optimization_potential',
+        accessor: 'optimization_potential',
+      },
+      {
         Header: 'count',
         accessor: 'count',
       },
       {
-        Header: 'avg(responseTime)',
-        accessor: 'avg(responseTime)',
-      },
-      {
         Header: 'median',
-        accessor: 'pct(responseTime, 50)',
+        accessor: 'median',
       },
       {
         Header: 'pct(responseTime, 95)',
@@ -87,17 +87,17 @@ function Tables() {
 
   return (
     <div>
-      {peaks.map((peak) => (
+      {peaks.map((data_point) => (
         <div>
-          <h3>{`Expected CPU: ${peak.cpuData.expected_CPU}, Actual: ${peak.cpuData.actual_CPU}`}</h3>
-          <Table columns={columns} data={peak.data} />
+          <h3>{`Expected CPU: ${data_point.cpuData.expected_CPU}, Actual: ${data_point.cpuData.actual_CPU}`}</h3>
+          <Table columns={columns} data={data_point.data} />
         </div>
       ))}
 
-      {non_peaks.map((peak) => (
+      {non_peaks.map((data_point) => (
         <div>
-          <h3>{`Expected CPU: ${peak.cpuData.expected_CPU}, Actual: ${peak.cpuData.actual_CPU}`}</h3>
-          <Table columns={columns} data={peak.data} />
+          <h3>{`Expected CPU: ${data_point.cpuData.expected_CPU}, Actual: ${data_point.cpuData.actual_CPU}`}</h3>
+          <Table columns={columns} data={data_point.data} />
         </div>
       ))}
     </div>

@@ -1,5 +1,5 @@
 const { groupAndCountUrls } = require('./urlGrouping.js');
-const { generateRegex, readJSONfromFile } = require('./helpers.js');
+const { generateRegex } = require('./helpers.js');
 const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
 const { detectPeak, processAndExport, transferDataToDashboard } = require('./resultProcessing.js');
 

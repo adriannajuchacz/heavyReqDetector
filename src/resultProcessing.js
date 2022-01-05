@@ -1,6 +1,4 @@
-const createCsvWriter = require('csv-writer').createObjectCsvWriter;
 var regression = require('regression');
-const mkdirp = require('mkdirp');
 const { readJSONfromFile, writeJSONToFile } = require('./helpers.js');
 
 var config = readJSONfromFile('config/config_file.json');
@@ -42,9 +40,15 @@ async function detectPeak() {
         merged[i]["expectedValue"] = expectedValue;
     }
 
+    // save to the dashboard
+    await writeJSONToFile(`./dashboard/src/data`, `unsorted_points.json`, merged)
+
     // sort by difference DESC
     merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
     await writeJSONToFile(`./data/peak_detection`, `sorted_peaks.json`, merged)
+        
+    // save to the dashboard
+    await writeJSONToFile(`./dashboard/src/data`, `sorted_points.json`, merged)
 
     // return 3 top as peaks
     let peaks = merged.slice(0, config.number_of_points)
@@ -62,20 +66,19 @@ async function processAndExport(timestamp) {
     let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/endpoints_with_stats.json`);
     for (let i = 0; i < urlArray.length; i++) {
         // calculate cumulated_response_time
-        let weight = urlArray[i]["count"] * urlArray[i]["avg(responseTime)"]
-        urlArray[i]["cumulated_response_time"] = weight
+        let cumulated_response_time = urlArray[i]["count"] * urlArray[i]["avg(responseTime)"]
 
+        urlArray[i]['pct(responseTime, 50)'] = (urlArray[i]['pct(responseTime, 50)'] === 0)? 0.01 : urlArray[i]['pct(responseTime, 50)'];
         // calculate the percentiles to median ratio
-        urlArray[i]["5%_to_median"] = urlArray[i]['pct(responseTime, 95)'] / urlArray[i]['pct(responseTime, 50)']
-        urlArray[i]["1%_to_median"] = urlArray[i]['pct(responseTime, 99)'] / urlArray[i]['pct(responseTime, 50)']
-        urlArray[i]["0.5%_to_median"] = urlArray[i]['pct(responseTime, 99.5)'] / urlArray[i]['pct(responseTime, 50)']
+        let P95_to_median = urlArray[i]['pct(responseTime, 95)'] / urlArray[i]['pct(responseTime, 50)']
+        let P99_to_median = urlArray[i]['pct(responseTime, 99)'] / urlArray[i]['pct(responseTime, 50)']
+        let P995_to_median = urlArray[i]['pct(responseTime, 99.5)'] / urlArray[i]['pct(responseTime, 50)']
 
         // calculate the optimization potential 
-        urlArray[i]["optimization_potential"] = urlArray[i]["cumulated_response_time"] * urlArray[i]["5%_to_median"] * urlArray[i]["1%_to_median"] * urlArray[i]["0.5%_to_median"]
+        urlArray[i]["optimization_potential"] = cumulated_response_time * ((P95_to_median * P99_to_median * P995_to_median)/3)
     }
     // Sort DESC by optimization_potential
     urlArray = urlArray.sort((firstEl, secondEl) => { return secondEl["optimization_potential"] - firstEl["optimization_potential"] })
-
 
     // add a letter symbol
     for (let i = 0; i < urlArray.length; i++) {
@@ -88,13 +91,13 @@ async function processAndExport(timestamp) {
         return {
             "symbol": o.symbol,
             "url": o.url,
-            "optimization_potential": o.optimization_potential,
-            "cumulated_response_time": o.cumulated_response_time,
+            "optimization_potential": Math.round(o.optimization_potential),
+            "cumulated_response_time": Math.round(o.cumulated_response_time),
             "count": o.count,
-            "avg(responseTime)": o['pct(responseTime, 50)'],
-            "pct(responseTime, 95)": o['pct(responseTime, 95)'],
-            "pct(responseTime, 99)": o['pct(responseTime, 99)'],
-            "pct(responseTime, 995)": o['pct(responseTime, 99.5)']
+            "median": parseFloat(o['pct(responseTime, 50)']).toFixed(2),
+            "pct(responseTime, 95)": parseFloat(o['pct(responseTime, 95)']).toFixed(2),
+            "pct(responseTime, 99)": parseFloat(o['pct(responseTime, 99)']).toFixed(2),
+            "pct(responseTime, 995)": parseFloat(o['pct(responseTime, 99.5)']).toFixed(2)
         }
     })
 
