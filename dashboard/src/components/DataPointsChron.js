@@ -10,7 +10,7 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-import sorted_peaks from '../data/unsorted_points.json';
+import unsorted_points from '../data/unsorted_points.json';
 
 export default function DataPointsChron() {
   return (
@@ -20,7 +20,7 @@ export default function DataPointsChron() {
         <LineChart
           width={500}
           height={300}
-          data={sorted_peaks}
+          data={unsorted_points}
           margin={{
             top: 5,
             right: 30,

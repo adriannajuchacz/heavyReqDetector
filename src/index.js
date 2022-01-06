@@ -2,6 +2,7 @@ const { groupAndCountUrls } = require('./urlGrouping.js');
 const { generateRegex } = require('./helpers.js');
 const { fetchRequestCount, fetchCPUValues, fetchURLs, fetchResponseTimeData } = require('./dataFetching.js');
 const { detectPeak, processAndExport, transferDataToDashboard } = require('./resultProcessing.js');
+const { calculateEndpointDistribution } = require('./endpointDistribution.js');
 
 const main = async () => {
     // fetching data for the peak detection
@@ -30,6 +31,8 @@ const main = async () => {
          // process & save to csv
          await processAndExport(e.timestamp)  
       }));
+
+    await calculateEndpointDistribution()
     console.log("Transferring the data to the dashboard")
     await transferDataToDashboard()
     console.log("Run npm run start in /dashboard")

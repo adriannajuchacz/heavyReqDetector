@@ -45,7 +45,7 @@ async function detectPeak() {
 
     // sort by difference DESC
     merged.sort((firstEl, secondEl) => { return  secondEl.difference - firstEl.difference })
-    await writeJSONToFile(`./data/peak_detection`, `sorted_peaks.json`, merged)
+    await writeJSONToFile(`./data/peak_detection`, `sorted_points.json`, merged)
         
     // save to the dashboard
     await writeJSONToFile(`./dashboard/src/data`, `sorted_points.json`, merged)

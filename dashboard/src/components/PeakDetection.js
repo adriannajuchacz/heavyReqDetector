@@ -11,7 +11,7 @@ import {
 } from "recharts";
 
 
-import sorted_peaks from '../data/sorted_points.json';
+import sorted_points from '../data/sorted_points.json';
 
 export default function PeakDetection() {
   return (
@@ -23,7 +23,7 @@ export default function PeakDetection() {
         <LineChart
           width={500}
           height={300}
-          data={sorted_peaks}
+          data={sorted_points}
           margin={{
             top: 5,
             right: 30,
