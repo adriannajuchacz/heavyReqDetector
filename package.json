@@ -8,6 +8,8 @@
   },
   "scripts": {
     "start": "node src/index.js",
+    "distribution": "node src/scripts/calculateDistribution.js",
+    "pre-results": "node src/scripts/generatePreResults.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

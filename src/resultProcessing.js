@@ -91,6 +91,7 @@ async function processAndExport(timestamp) {
         return {
             "symbol": o.symbol,
             "url": o.url,
+            "regex": o.regex,
             "optimization_potential": Math.round(o.optimization_potential),
             "cumulated_response_time": Math.round(o.cumulated_response_time),
             "count": o.count,

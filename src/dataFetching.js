@@ -160,6 +160,7 @@ async function fetchResponseTimeData(urlArray, timestamp) {
         statResultArr.forEach(el => {
             urlArray[i][el.field] = parseFloat(el.value)
         });
+        urlArray[i].regex = urlArray[i].regex.source
     }
 
     await writeJSONToFile(`./data/mid-results/${timestamp}`, `endpoints_with_stats.json`, urlArray)

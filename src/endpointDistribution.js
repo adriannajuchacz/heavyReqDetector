@@ -1,46 +1,206 @@
+var awsCli = require('aws-cli-js');
+var Options = awsCli.Options;
+var Aws = awsCli.Aws;
+
+var options = new Options(
+    process.env.ACCESS_KEY,         /* accessKey    */
+    process.env.SECRET_KEY,         /* secretKey    */
+    null,                           /* sessionToken */
+    null,                           /* currentWorkingDirectory */
+    'aws'                           /* cliPath */
+);
+
+var aws = new Aws(options);
+const { getPeakUTCs, readJSONfromFile, writeJSONToFile } = require('./helpers.js');
+var config = readJSONfromFile('config/config_file.json');
+
+function calculateIntervals(median, p995) {
+    // intervals = [median, median*2, ... , median * x <= pct95 <= median * x+1]
+    let intervals = []
+    let curr_int = median
+    for (let i=1; curr_int < p995; i++) {
+        curr_int = i * median;
+        intervals.push(curr_int)
+    }
+    return intervals
+}
+
+async function fetchRequestCount(regex, timestamp, minResponseTime, maxResponseTime) { 
+    // calculate the start_time and end_time (UTC) of the peak 
+    const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
+    // start the query 
+    let query_id
+    regex = new RegExp(regex);
+
+    await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${peak_start_time_UTC} --end-time ${peak_end_time_UTC} --query-string 'fields @timestamp, @message, responseTime | filter @logStream like "biz" and message like "request completed" and req.url like ${regex} and responseTime > ${minResponseTime} and responseTime < ${maxResponseTime} | stats count(*) as RequestCount'`).then(function (data) {
+        query_id = data.object.queryId
+    }).catch((e) => {
+        console.log(e)
+    });
+
+    // run the query
+    let status, res
+    while (status !== "Complete") {
+        res = await aws.command(`logs get-query-results --query-id ${query_id}`).then(function (data) {
+            status = data.object.status
+            if (status === 'Complete') {
+                if (data.object.results.length === 0) return 0;
+                return parseInt(data.object.results[0][0].value)
+            }
+        }).catch((e) => {
+            console.log(e)
+        });
+    }
+    console.log(res)
+    return res;
+}
+
+function getRandomColor() {
+    var letters = '0123456789ABCDEF';
+    var color = '#';
+    for (var i = 0; i < 6; i++) {
+      color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
+function findMaxLevelAndAllEndpoints(peaksData) {
+    let maxValue = 2;
+    let endpoints = []
+    // find all urls and max MedianMultiple
+    peaksData.forEach(peak => {
+        peak.endpointsData.forEach(endpoint => {
+            endpoints.includes(endpoint.url) ? null : endpoints.push(endpoint.url)
+            endpoint.intervalsData.forEach(interval => {
+                (interval.ratioMedian > maxValue) ? maxValue = interval.ratioMedian : null
+            })
+        });
+        
+    });
+
+    return { 
+        endpointsData: endpoints, 
+        maxMultipleOfMedian: maxValue 
+    };
+}
+
+async function processDataForDashboard() {
+    let peaksData = readJSONfromFile(`./data/results/endpointDistribution_intervals.json`);
+    
+    let { endpointsData, maxMultipleOfMedian } = findMaxLevelAndAllEndpoints(peaksData)
+    let preResults = []
+
+    for (let level = 2; level <= maxMultipleOfMedian; level++) {
+        let currentLevel = {
+            multipleOfMedian: level,
+            sumOfRequests: 0
+        }
+        currentLevel["endpoints"] = endpointsData.map(x => {
+            return {
+                "url": x,
+                "color": getRandomColor(),
+                "requestCount": 0
+            }
+        })
+        
+        peaksData.forEach(peak => {
+            peak.endpointsData.forEach(endpoint => {
+                endpoint.intervalsData.forEach(interval => {
+                    if(interval.ratioMedian === level) {
+                        currentLevel.sumOfRequests += interval.requestCount
+                        currentLevel.endpoints.map(e => {
+                            if(e.url === endpoint.url) {
+                                e.requestCount += interval.requestCount
+                            }
+                            return e;
+                        })
+                    }
+                })
+            });
+            
+        });
+        preResults.push(currentLevel)
+    }
+
+    await writeJSONToFile("./data/results/", "endpointDistribution_preResults.json", preResults)
+
+}
+
 async function calculateEndpointDistribution() {
     // load peaks
     let peaks = readJSONfromFile(`./data/results/peaks_data.json`);
-    // let peaksData = []
+    let peaksData = []
     //foreach peaks
-        // load all peak Endpoint with regex, median & pct99.5=> endpoints 
-        /*
-            peakData = {
-                "timestamp": peak.timestamp,
-                "endpointsData": []
-            }
-        */
-        // foreach endpoint
-            /*
-            endpointData = {
-                regex: endpoint.url,
-                intervalsData: []
-            }
-            */
-            // calculate intervals - outsource to a function
+    for (const el of peaks) {
+        endpoints = readJSONfromFile(`./data/results/${el.timestamp}.json`);
+        
+        let peakData = {
+            "timestamp": el.timestamp,
+            "endpointsData": []
+        }
 
-            // intervals = [median, median*2, ... , pct95]
-            // for(let i=0; i<(intervals.length - 1); i++)
-                // start_time = peak.timestamp - config.peak_duration_in_min
-                // end_time = peak.timestamp
-                // minResponseTime = intervals[i]
-                // maxResponseTime = intervals[i+1]
-                // fetch request count for start_time, end_time, minResponseTime<responseTime<maxResponseTime , endpoint.regex
-                /*                
-                    endpointData.intervalsData.push({
-                        "ratioMedian": i+1,
-                        "minValue": intervals[i]
-                        "maxValue": intervals[i+1]
-                        "requestCount": queryResult
-                    })
-                */
-            
-            // peakData.endpointsData.push(endpointData)
-        // peaksData.push(peakData)    
+        for (const endpoint of endpoints) {
+            let endpointData = {
+                "url": endpoint.url,
+                "intervalsData": []
+            }
+            let intervals = calculateIntervals(endpoint.median, endpoint["pct(responseTime, 995)"])
+            for(let i=0; i<(intervals.length - 1); i++) {
+                let minResponseTime = intervals[i]
+                let maxResponseTime = intervals[i+1]
+                
+                let requestCount = await fetchRequestCount(endpoint.regex, el.timestamp, minResponseTime, maxResponseTime)
+                endpointData.intervalsData.push({
+                    "ratioMedian": i+2,
+                    "minValue": intervals[i],
+                    "maxValue": intervals[i+1],
+                    "requestCount": requestCount
+                })
+            }
+            peakData.endpointsData.push(endpointData)
+        };
+        peaksData.push(peakData)
+    };
 
-    // save peaksData in dashboard
+    await writeJSONToFile("./data/results/", "endpointDistribution_intervals.json", peaksData)
+    /**
+     * let preResults = [
+     *      {
+     *          multipleOfMedian: 1,
+     *          sumOfRequests: 1243,
+     *          endpoints: [
+     *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
+     *              "/v/dev-0.0/tenants/dashboard/events": 3,
+     *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
+     *              "/v/dev-0.0/tenants/eon/test": 0
+     *          ]
+     *      }
+     *  
+     * ]
+     */
+    // calculate ratio
+    /**
+     * let dashboardResult = [
+     *      {
+     *          multipleOfMedian: 1,
+     *          endpoints: [
+     *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
+     *              "/v/dev-0.0/tenants/dashboard/events": 3,
+     *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
+     *              "/v/dev-0.0/tenants/eon/test": 0
+     *          ]
+     *      }
+     *  
+     * ]
+     */
+
+    // save endpoints
+    await writeJSONToFile(`./dashboard/src/data`, `endpointDistribution.json`, peaksData)
+    processDataForDashboard()
 }
 
+
 module.exports = {
-    calculateEndpointDistribution
+    calculateEndpointDistribution,
+    processDataForDashboard
 };
