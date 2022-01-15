@@ -64,7 +64,7 @@ function getRandomColor() {
     return color;
 }
 
-function findMaxLevelAndAllEndpoints(peaksData) {
+async function findMaxLevelAndAllEndpoints(peaksData) {
     let maxValue = 2;
     let endpoints = []
     // find all urls and max MedianMultiple
@@ -77,6 +77,15 @@ function findMaxLevelAndAllEndpoints(peaksData) {
         });
         
     });
+    // TODO create endpointWithColors for dashboard RequestChart
+    let endpointsWithColors = endpoints.map(x => {
+        return {
+            "url": x.url,
+            "color": x.color
+        }
+            
+    })
+    await writeJSONToFile(`./dashboard/src/data`, `endpointsWithColors.json`, endpointsWithColors)
 
     return { 
         endpointsData: endpoints, 
@@ -98,7 +107,6 @@ async function processDataForDashboard() {
         currentLevel["endpoints"] = endpointsData.map(x => {
             return {
                 "url": x,
-                "color": getRandomColor(),
                 "requestCount": 0
             }
         })
@@ -126,6 +134,39 @@ async function processDataForDashboard() {
 
 }
 
+async function processPreResultsForRequestChart() {
+    let preResults = readJSONfromFile(`./data/results/endpointDistribution_preResults.json`);
+    let iteratorAndEndpointCount = preResults.map(x => {
+        let eObj = {}
+        x.endpoints.map(y => {
+            eObj[y.url]= y.requestCount
+        })
+        return {
+            multipleOfMedian: x.multipleOfMedian,
+            ...eObj
+        }
+    })
+    await writeJSONToFile(`./dashboard/src/data`, "endpointDistribution_iteratorAndEndpointCount.json", iteratorAndEndpointCount)
+}
+
+async function processPreResultsForRatioChart() {
+    let preResults = readJSONfromFile(`./data/results/endpointDistribution_preResults.json`);
+    let iteratorAndEndpointRatio = preResults.map(x => {
+        let eObj = {}
+        
+        x.endpoints.map(y => {
+            let percent = (y.requestCount/x.sumOfRequests) * 100
+            eObj[y.url]= Math.round(percent * 100) / 100
+        })
+        return {
+            multipleOfMedian: x.multipleOfMedian,
+            ...eObj
+        }
+    })
+    await writeJSONToFile(`./dashboard/src/data`, `endpointDistribution_iteratorAndEndpointRatio.json`, iteratorAndEndpointRatio)
+
+
+}
 async function calculateEndpointDistribution() {
     // load peaks
     let peaks = readJSONfromFile(`./data/results/peaks_data.json`);
@@ -202,5 +243,7 @@ async function calculateEndpointDistribution() {
 
 module.exports = {
     calculateEndpointDistribution,
-    processDataForDashboard
+    processDataForDashboard,
+    processPreResultsForRequestChart,
+    processPreResultsForRatioChart
 };
