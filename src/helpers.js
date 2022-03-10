@@ -2,8 +2,25 @@ var fs = require('fs');
 const mkdirp = require('mkdirp');
 const variableReplacement = "XXXXX"
 
+function stepDone(step) {
+   switch (step) {
+      case "fetchRequestCount":
+         path = `./data/peak_detection/request_count.json`
+         break;
+      case "fetchCPUValues":
+         path = `./data/peak_detection/CPU_values.json`
+         break;
+      default:
+         path = "XXXXXXXXXXXXXXXXXXXXX"
+         break;
+   }
+   return fs.existsSync(path)
+}
 function readJSONfromFile(path) {
-   return JSON.parse(fs.readFileSync(path, 'utf8'));
+   if (fs.existsSync(path)) {
+      return JSON.parse(fs.readFileSync(path, 'utf8'));
+   }
+   return null
 }
 
 async function writeJSONToFile(dirPath, filename, obj) {
@@ -35,18 +52,23 @@ var config = readJSONfromFile('config/config_file.json');
  * 
  * @param {array} urlArray 
  */
- async function generateRegex(timestamp) {
+async function generateRegex(timestamp) {
    let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/grouped_urls_with_count.json`);
-    return urlArray.map((urlObj) => {
-       let variableReplacementRegex = new RegExp(variableReplacement, "g")
-       let regex = new RegExp(urlObj.url.replace(variableReplacementRegex, "(.*)"))
-       urlObj["regex"] = regex
-       return urlObj
-    })
- }
+   let regexArr = readJSONfromFile(`./data/mid-results/regex.json`);
+   regexArr = (regexArr === null )? [] : regexArr;
+   let urlArrayWithRegex = urlArray.map((urlObj) => {
+      let variableReplacementRegex = new RegExp(variableReplacement, "g")
+      let regex = new RegExp(urlObj.url.replace(variableReplacementRegex, "(.*)"))
+      regexArr.includes(regex.source) ? null : regexArr.push(regex.source)
+      urlObj["regex"] = regex
+      return urlObj
+   })
+   await writeJSONToFile(`./data/mid-results`, `regex.json`, regexArr)
+   return urlArrayWithRegex
+}
 
- Date.prototype.substractMinutes = function(m) {
-   this.setTime(this.getTime() - (m*60*1000));
+Date.prototype.substractMinutes = function (m) {
+   this.setTime(this.getTime() - (m * 60 * 1000));
    return this;
 }
 
@@ -60,9 +82,10 @@ function getPeakUTCs(timestamp) {
 }
 
 module.exports = {
-    generateRegex,
-    getPeakUTCs,
-    readJSONfromFile,
-    writeJSONToFile,
-    variableReplacement
+   generateRegex,
+   getPeakUTCs,
+   readJSONfromFile,
+   writeJSONToFile,
+   variableReplacement,
+   stepDone
 };

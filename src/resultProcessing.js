@@ -15,14 +15,16 @@ async function detectPeak() {
     let array_for_regression = []
     for (let i = 0; i < requestCount.length; i++) {
         if (requestCount[i].timestamp !== CPUValues[i].timestamp) {
-            throw new Error('Something went wrong with the fetching the CPUValues & RequestCount');
+            throw new Error('Make sure that the start_time is a start of a 15min interval, e.g. 2022-02-28T00:00:00+01:00');
         }
-        merged.push({
-            timestamp: requestCount[i].timestamp,
-            cpuValue: CPUValues[i].value, 
-            requestCount: requestCount[i].count
-        })
-        array_for_regression.push([requestCount[i].count, CPUValues[i].value])
+        if (requestCount[i] && CPUValues[i]) {
+            merged.push({
+                timestamp: requestCount[i].timestamp,
+                cpuValue: CPUValues[i].value, 
+                requestCount: requestCount[i].count
+            })
+            array_for_regression.push([requestCount[i].count, CPUValues[i].value])
+        }
     }
     // calculate linear regression
     const result = regression.linear(array_for_regression, {

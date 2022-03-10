@@ -24,14 +24,17 @@ async function fetchRequestCount() {
     const start_time_UTC = new Date(config.start_time.split('+')[0]).getTime()
     const end_time_UTC = new Date(config.end_time.split('+')[0]).getTime()
     // start the query 
+
+    console.log("Peak detection: start query: requestCount")
     let query_id
     await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${start_time_UTC} --end-time ${end_time_UTC} --query-string 'fields @timestamp, RequestCount | filter @logStream like "biz" and message like "request completed" | stats count(*) as RequestCount by bin(${config.interval_in_sec/60}min) | limit 10000'`).then(function (data) {
         query_id = data.object.queryId
     }).catch((e) => {
         console.log(e)
     });
-
+    console.log(`requestCount query id: ${query_id}`)
     // run the query
+    console.log("Peak detection: run query: requestCount")
     let status, res
     while (status !== "Complete") {
         res = await aws.command(`logs get-query-results --query-id ${query_id}`).then(function (data) {
@@ -49,12 +52,15 @@ async function fetchRequestCount() {
         });
     }
 
+    console.log("Peak detection: requestCount: done")
     await writeJSONToFile(`./data/peak_detection`, `request_count.json`, res)
     return res;
 }
 
 async function fetchCPUValues() { 
     // start the query 
+    console.log("Peak detection: fetch Cloudwatch metrics: CPU values")
+    console.log(`aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`)
     res = await aws.command(`cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`).then(function (data) {
         return data.object.Datapoints
             // retrieve only timestamp and maximum CPU utilization
@@ -66,8 +72,9 @@ async function fetchCPUValues() {
             .sort((firstEl, secondEl) => { return new Date(secondEl["timestamp"]) - new Date(firstEl["timestamp"]) })
     }).catch((e) => {
         console.log(e)
-    });
+    })
 
+    console.log("Peak detection: CPU values: done")
     await writeJSONToFile(`./data/peak_detection`, `CPU_values.json`, res)
     return res;
 }

@@ -25,7 +25,7 @@ function calculateIntervals(median, p995) {
     return intervals
 }
 
-async function fetchRequestCount(regex, timestamp, minResponseTime, maxResponseTime) { 
+async function fetcheRequestCountPerEndpoint(regex, timestamp, minResponseTime, maxResponseTime) { 
     // calculate the start_time and end_time (UTC) of the peak 
     const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
     // start the query 
@@ -51,7 +51,6 @@ async function fetchRequestCount(regex, timestamp, minResponseTime, maxResponseT
             console.log(e)
         });
     }
-    console.log(res)
     return res;
 }
 
@@ -190,7 +189,7 @@ async function calculateEndpointDistribution() {
                 let minResponseTime = intervals[i]
                 let maxResponseTime = intervals[i+1]
                 
-                let requestCount = await fetchRequestCount(endpoint.regex, el.timestamp, minResponseTime, maxResponseTime)
+                let requestCount = await fetcheRequestCountPerEndpoint(endpoint.regex, el.timestamp, minResponseTime, maxResponseTime)
                 endpointData.intervalsData.push({
                     "ratioMedian": i+2,
                     "minValue": intervals[i],

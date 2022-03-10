@@ -1,6 +1,6 @@
 {
-    "start_time": "2021-11-01T00:00:00+01:00",
-    "end_time": "2021-11-03T23:59:59+01:00",
+    "start_time": "2022-02-28T00:00:00+01:00",
+    "end_time": "2022-02-28T23:59:59+01:00",
     "interval_in_sec": "900",
     "EC2_instance_id": "i-0102faac30e4c731a",
     "number_of_points": 3,
