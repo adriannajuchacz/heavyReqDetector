@@ -1,5 +1,7 @@
 var awsCli = require('aws-cli-js');
 const { getPeakUTCs, readJSONfromFile, writeJSONToFile } = require('./helpers.js');
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
 
 var Options = awsCli.Options;
 var Aws = awsCli.Aws;
@@ -60,7 +62,6 @@ async function fetchRequestCount() {
 async function fetchCPUValues() { 
     // start the query 
     console.log("Peak detection: fetch Cloudwatch metrics: CPU values")
-    console.log(`aws cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`)
     res = await aws.command(`cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`).then(function (data) {
         return data.object.Datapoints
             // retrieve only timestamp and maximum CPU utilization
@@ -93,19 +94,22 @@ async function fetchURLs(timestamp) {
         // run the query
         let status, res
         while (status !== "Complete") {
-            res = await aws.command(`logs get-query-results --query-id ${query_id}`).then(function (data) {
-                status = data.object.status
+            try {
+                let { stdout } = await exec(`aws logs get-query-results --query-id ${query_id}`);       
+                stdout = JSON.parse(stdout)     
+                status = stdout.status
                 if (status === 'Complete') {
-                    return data.object.results
+                    res = stdout.results
                     .map(x => { return { 
                         // remove the search part from the url
                         url: x[0].value.split("?")[0], 
                         count: parseInt(x[1].value) 
                     }})
                 }
-            }).catch((e) => {
-                console.log(e)
-            });
+    
+            } catch (err) {
+               console.error(err);
+            };
         }
     
         return res;

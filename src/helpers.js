@@ -10,6 +10,12 @@ function stepDone(step) {
       case "fetchCPUValues":
          path = `./data/peak_detection/CPU_values.json`
          break;
+      case "fetchResponseTime":
+         path = `./data/results/peaks_data.json`
+         break;
+      case "endpointIntervals":
+         path = `./data/results/endpointDistribution_intervals.json`
+         break;
       default:
          path = "XXXXXXXXXXXXXXXXXXXXX"
          break;
@@ -55,7 +61,7 @@ var config = readJSONfromFile('config/config_file.json');
 async function generateRegex(timestamp) {
    let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/grouped_urls_with_count.json`);
    let regexArr = readJSONfromFile(`./data/mid-results/regex.json`);
-   regexArr = (regexArr === null )? [] : regexArr;
+   regexArr = (regexArr === null) ? [] : regexArr;
    let urlArrayWithRegex = urlArray.map((urlObj) => {
       let variableReplacementRegex = new RegExp(variableReplacement, "g")
       let regex = new RegExp(urlObj.url.replace(variableReplacementRegex, "(.*)"))

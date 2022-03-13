@@ -1,3 +1,4 @@
+const { stepDone } = require('./helpers.js');
 var awsCli = require('aws-cli-js');
 var Options = awsCli.Options;
 var Aws = awsCli.Aws;
@@ -18,14 +19,14 @@ function calculateIntervals(median, p995) {
     // intervals = [median, median*2, ... , median * x <= pct95 <= median * x+1]
     let intervals = []
     let curr_int = median
-    for (let i=1; curr_int < p995; i++) {
+    for (let i = 1; curr_int < p995; i++) {
         curr_int = i * median;
         intervals.push(curr_int)
     }
     return intervals
 }
 
-async function fetcheRequestCountPerEndpoint(regex, timestamp, minResponseTime, maxResponseTime) { 
+async function fetcheRequestCountPerEndpoint(regex, timestamp, minResponseTime, maxResponseTime) {
     // calculate the start_time and end_time (UTC) of the peak 
     const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
     // start the query 
@@ -42,6 +43,7 @@ async function fetcheRequestCountPerEndpoint(regex, timestamp, minResponseTime, 
     let status, res
     while (status !== "Complete") {
         res = await aws.command(`logs get-query-results --query-id ${query_id}`).then(function (data) {
+
             status = data.object.status
             if (status === 'Complete') {
                 if (data.object.results.length === 0) return 0;
@@ -58,7 +60,7 @@ function getRandomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
     for (var i = 0; i < 6; i++) {
-      color += letters[Math.floor(Math.random() * 16)];
+        color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
 }
@@ -74,7 +76,7 @@ async function findMaxLevelAndAllEndpoints(peaksData) {
                 (interval.ratioMedian > maxValue) ? maxValue = interval.ratioMedian : null
             })
         });
-        
+
     });
     // TODO create endpointWithColors for dashboard RequestChart
     let endpointsWithColors = endpoints.map(x => {
@@ -82,19 +84,19 @@ async function findMaxLevelAndAllEndpoints(peaksData) {
             "url": x.url,
             "color": x.color
         }
-            
+
     })
     await writeJSONToFile(`./dashboard/src/data`, `endpointsWithColors.json`, endpointsWithColors)
 
-    return { 
-        endpointsData: endpoints, 
-        maxMultipleOfMedian: maxValue 
+    return {
+        endpointsData: endpoints,
+        maxMultipleOfMedian: maxValue
     };
 }
 
 async function processDataForDashboard() {
     let peaksData = readJSONfromFile(`./data/results/endpointDistribution_intervals.json`);
-    
+
     let { endpointsData, maxMultipleOfMedian } = findMaxLevelAndAllEndpoints(peaksData)
     let preResults = []
 
@@ -109,14 +111,14 @@ async function processDataForDashboard() {
                 "requestCount": 0
             }
         })
-        
+
         peaksData.forEach(peak => {
             peak.endpointsData.forEach(endpoint => {
                 endpoint.intervalsData.forEach(interval => {
-                    if(interval.ratioMedian === level) {
+                    if (interval.ratioMedian === level) {
                         currentLevel.sumOfRequests += interval.requestCount
                         currentLevel.endpoints.map(e => {
-                            if(e.url === endpoint.url) {
+                            if (e.url === endpoint.url) {
                                 e.requestCount += interval.requestCount
                             }
                             return e;
@@ -124,7 +126,7 @@ async function processDataForDashboard() {
                     }
                 })
             });
-            
+
         });
         preResults.push(currentLevel)
     }
@@ -138,7 +140,7 @@ async function processPreResultsForRequestChart() {
     let iteratorAndEndpointCount = preResults.map(x => {
         let eObj = {}
         x.endpoints.map(y => {
-            eObj[y.url]= y.requestCount
+            eObj[y.url] = y.requestCount
         })
         return {
             multipleOfMedian: x.multipleOfMedian,
@@ -152,10 +154,10 @@ async function processPreResultsForRatioChart() {
     let preResults = readJSONfromFile(`./data/results/endpointDistribution_preResults.json`);
     let iteratorAndEndpointRatio = preResults.map(x => {
         let eObj = {}
-        
+
         x.endpoints.map(y => {
-            let percent = (y.requestCount/x.sumOfRequests) * 100
-            eObj[y.url]= Math.round(percent * 100) / 100
+            let percent = (y.requestCount / x.sumOfRequests) * 100
+            eObj[y.url] = Math.round(percent * 100) / 100
         })
         return {
             multipleOfMedian: x.multipleOfMedian,
@@ -167,75 +169,83 @@ async function processPreResultsForRatioChart() {
 
 }
 async function calculateEndpointDistribution() {
-    // load peaks
-    let peaks = readJSONfromFile(`./data/results/peaks_data.json`);
-    let peaksData = []
-    //foreach peaks
-    for (const el of peaks) {
-        endpoints = readJSONfromFile(`./data/results/${el.timestamp}.json`);
-        
-        let peakData = {
-            "timestamp": el.timestamp,
-            "endpointsData": []
-        }
+    if (!stepDone("endpointIntervals")) {
+        // load peaks
+        let peaks = readJSONfromFile(`./data/results/peaks_data.json`);
+        let peaksData = []
+        //foreach peaks
+        for (const el of peaks) {
+            let current_peak = 1;
+            endpoints = readJSONfromFile(`./data/results/${el.timestamp}.json`);
 
-        for (const endpoint of endpoints) {
-            let endpointData = {
-                "url": endpoint.url,
-                "intervalsData": []
+            let peakData = {
+                "timestamp": el.timestamp,
+                "endpointsData": []
             }
-            let intervals = calculateIntervals(endpoint.median, endpoint["pct(responseTime, 995)"])
-            for(let i=0; i<(intervals.length - 1); i++) {
-                let minResponseTime = intervals[i]
-                let maxResponseTime = intervals[i+1]
-                
-                let requestCount = await fetcheRequestCountPerEndpoint(endpoint.regex, el.timestamp, minResponseTime, maxResponseTime)
-                endpointData.intervalsData.push({
-                    "ratioMedian": i+2,
-                    "minValue": intervals[i],
-                    "maxValue": intervals[i+1],
-                    "requestCount": requestCount
-                })
-            }
-            peakData.endpointsData.push(endpointData)
+
+            for (const endpoint of endpoints) {
+                let current_endpoint = 1;
+                let endpointData = {
+                    "url": endpoint.url,
+                    "intervalsData": []
+                }
+                let intervals = calculateIntervals(endpoint.median, endpoint["pct(responseTime, 995)"])
+                for (let i = 0; i < (intervals.length - 1); i++) {
+                    console.log(`peak: ${current_peak}/${peaks.length} | endpoint: ${current_endpoint}/${endpoints.length} | interval: ${i + 1}/${intervals.length}`)
+                    let minResponseTime = intervals[i]
+                    let maxResponseTime = intervals[i + 1]
+
+                    let requestCount = await fetcheRequestCountPerEndpoint(endpoint.regex, el.timestamp, minResponseTime, maxResponseTime)
+                    endpointData.intervalsData.push({
+                        "ratioMedian": i + 2,
+                        "minValue": intervals[i],
+                        "maxValue": intervals[i + 1],
+                        "requestCount": requestCount
+                    })
+                }
+                peakData.endpointsData.push(endpointData)
+                current_endpoint += 1
+            };
+            current_peak += 1
+            peaksData.push(peakData)
         };
-        peaksData.push(peakData)
-    };
 
-    await writeJSONToFile("./data/results/", "endpointDistribution_intervals.json", peaksData)
-    /**
-     * let preResults = [
-     *      {
-     *          multipleOfMedian: 1,
-     *          sumOfRequests: 1243,
-     *          endpoints: [
-     *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
-     *              "/v/dev-0.0/tenants/dashboard/events": 3,
-     *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
-     *              "/v/dev-0.0/tenants/eon/test": 0
-     *          ]
-     *      }
-     *  
-     * ]
-     */
-    // calculate ratio
-    /**
-     * let dashboardResult = [
-     *      {
-     *          multipleOfMedian: 1,
-     *          endpoints: [
-     *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
-     *              "/v/dev-0.0/tenants/dashboard/events": 3,
-     *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
-     *              "/v/dev-0.0/tenants/eon/test": 0
-     *          ]
-     *      }
-     *  
-     * ]
-     */
+        await writeJSONToFile("./data/results/", "endpointDistribution_intervals.json", peaksData)
+        /**
+         * let preResults = [
+         *      {
+         *          multipleOfMedian: 1,
+         *          sumOfRequests: 1243,
+         *          endpoints: [
+         *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
+         *              "/v/dev-0.0/tenants/dashboard/events": 3,
+         *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
+         *              "/v/dev-0.0/tenants/eon/test": 0
+         *          ]
+         *      }
+         *  
+         * ]
+         */
+        // calculate ratio
+        /**
+         * let dashboardResult = [
+         *      {
+         *          multipleOfMedian: 1,
+         *          endpoints: [
+         *              "/v/dev-0.0/tenants/smartpatcher/subtenants": 10,
+         *              "/v/dev-0.0/tenants/dashboard/events": 3,
+         *              "/v/dev-0.0/tenants/dashboard/statistics": 26,
+         *              "/v/dev-0.0/tenants/eon/test": 0
+         *          ]
+         *      }
+         *  
+         * ]
+         */
 
-    // save endpoints
-    await writeJSONToFile(`./dashboard/src/data`, `endpointDistribution.json`, peaksData)
+        // save endpoints
+        await writeJSONToFile(`./dashboard/src/data`, `endpointDistribution.json`, peaksData)
+    }
+    console.log("Running processDataForDashboard()")
     processDataForDashboard()
 }
 

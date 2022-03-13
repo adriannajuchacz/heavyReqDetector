@@ -19,23 +19,25 @@ const main = async () => {
     });
 
     console.log("Fetching data for the load analysis...")
-    await Promise.all(all_data_points.map(async (e) => {
-        // fetch the list of received requests for each timestamp
-        let urlArray = await fetchURLs(e.timestamp);
-        
-        // group & count URLs, save result to the ../data/groupedUrls.json
-        await groupAndCountUrls(urlArray, e.timestamp);
-
-        // generate regex of endpoints for Cloudwatch
-        urlArray = await generateRegex(e.timestamp)
-
-        // gather response Time statistics for each endpoint group in each peak
-        await fetchResponseTimeData(urlArray, e.timestamp)
-
-        // process & save to csv
-        console.log(`processAndExport ${e.timestamp}`)
-        await processAndExport(e.timestamp)
-    }));
+    if (!stepDone("fetchResponseTime")) {
+        await Promise.all(all_data_points.map(async (e) => {
+            // fetch the list of received requests for each timestamp
+            let urlArray = await fetchURLs(e.timestamp);
+            
+            // group & count URLs, save result to the ../data/groupedUrls.json
+            await groupAndCountUrls(urlArray, e.timestamp);
+    
+            // generate regex of endpoints for Cloudwatch
+            urlArray = await generateRegex(e.timestamp)
+    
+            // gather response Time statistics for each endpoint group in each peak
+            await fetchResponseTimeData(urlArray, e.timestamp)
+    
+            // process & save to csv
+            console.log(`processAndExport ${e.timestamp}`)
+            await processAndExport(e.timestamp)
+        }));
+    }
     
     console.log("processing Endpoint Distribution")
     await calculateEndpointDistribution()
