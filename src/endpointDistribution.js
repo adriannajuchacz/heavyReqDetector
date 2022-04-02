@@ -65,6 +65,10 @@ function getRandomColor() {
     return color;
 }
 
+/*
+    returns a list of all detected endpoints and the maximal interval (ratio), 
+    needed to scale the graphs in the dashboard
+*/
 async function findMaxLevelAndAllEndpoints(peaksData) {
     let maxValue = 2;
     let endpoints = []
@@ -73,19 +77,24 @@ async function findMaxLevelAndAllEndpoints(peaksData) {
         peak.endpointsData.forEach(endpoint => {
             endpoints.includes(endpoint.url) ? null : endpoints.push(endpoint.url)
             endpoint.intervalsData.forEach(interval => {
-                (interval.ratioMedian > maxValue) ? maxValue = interval.ratioMedian : null
+                (interval.ratioMedian > maxValue && interval.requestCount > 0) ? maxValue = interval.ratioMedian : null
             })
         });
 
     });
-    // TODO create endpointWithColors for dashboard RequestChart
+
     let endpointsWithColors = endpoints.map(x => {
         return {
-            "url": x.url,
-            "color": x.color
+            "url": x,
+            "color": getRandomColor(),
         }
-
     })
+    const alphabet = ["A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z"];
+
+    endpointsWithColors.forEach((element, index) => {
+        element["symbol"] = alphabet[index]
+    })
+
     await writeJSONToFile(`./dashboard/src/data`, `endpointsWithColors.json`, endpointsWithColors)
 
     return {
@@ -94,46 +103,6 @@ async function findMaxLevelAndAllEndpoints(peaksData) {
     };
 }
 
-async function processDataForDashboard() {
-    let peaksData = readJSONfromFile(`./data/results/endpointDistribution_intervals.json`);
-
-    let { endpointsData, maxMultipleOfMedian } = findMaxLevelAndAllEndpoints(peaksData)
-    let preResults = []
-
-    for (let level = 2; level <= maxMultipleOfMedian; level++) {
-        let currentLevel = {
-            multipleOfMedian: level,
-            sumOfRequests: 0
-        }
-        currentLevel["endpoints"] = endpointsData.map(x => {
-            return {
-                "url": x,
-                "requestCount": 0
-            }
-        })
-
-        peaksData.forEach(peak => {
-            peak.endpointsData.forEach(endpoint => {
-                endpoint.intervalsData.forEach(interval => {
-                    if (interval.ratioMedian === level) {
-                        currentLevel.sumOfRequests += interval.requestCount
-                        currentLevel.endpoints.map(e => {
-                            if (e.url === endpoint.url) {
-                                e.requestCount += interval.requestCount
-                            }
-                            return e;
-                        })
-                    }
-                })
-            });
-
-        });
-        preResults.push(currentLevel)
-    }
-
-    await writeJSONToFile("./data/results/", "endpointDistribution_preResults.json", preResults)
-
-}
 
 async function processPreResultsForRequestChart() {
     let preResults = readJSONfromFile(`./data/results/endpointDistribution_preResults.json`);
@@ -168,6 +137,74 @@ async function processPreResultsForRatioChart() {
 
 
 }
+
+async function calculateBurdensomenessScore() {
+    let endpointsWithColors = readJSONfromFile(`./dashboard/src/data/endpointsWithColors.json`);
+    endpointsWithColors.forEach(x => {x["burdensomeness_score"] = 0})
+    let preResults = readJSONfromFile(`./data/results/endpointDistribution_preResults.json`);
+
+    preResults.forEach(level => {
+        level.endpoints.forEach(endpointData => {
+            endpointsWithColors.forEach(endpoint => {
+                if (endpoint.url === endpointData.url) {
+                    endpoint.burdensomeness_score += endpointData.requestCount * level.multipleOfMedian
+                }
+            })
+        })
+    })
+
+    endpointsWithColors.sort((a,b) => {
+        return b.burdensomeness_score - a.burdensomeness_score
+    })
+
+    endpointsWithColors = endpointsWithColors.filter(item => !(item.burdensomeness_score === 0));
+    await writeJSONToFile(`./dashboard/src/data`, `burdensomeness_scores.json`, endpointsWithColors)
+}
+
+async function processDataForDashboard() {
+    let peaksData = readJSONfromFile(`./data/results/endpointDistribution_intervals.json`);
+
+    let { endpointsData, maxMultipleOfMedian } = await findMaxLevelAndAllEndpoints(peaksData)
+
+    let preResults = []
+
+    for (let level = 2; level <= maxMultipleOfMedian; level++) {
+        let currentLevel = {
+            multipleOfMedian: level,
+            sumOfRequests: 0
+        }
+        currentLevel["endpoints"] = endpointsData.map(x => {
+            return {
+                "url": x,
+                "requestCount": 0
+            }
+        })
+
+        peaksData.forEach(peak => {
+            peak.endpointsData.forEach(endpoint => {
+                endpoint.intervalsData.forEach(interval => {
+                    if (interval.ratioMedian === level) {
+                        currentLevel.sumOfRequests += interval.requestCount
+                        currentLevel.endpoints.map(e => {
+                            if (e.url === endpoint.url) {
+                                e.requestCount += interval.requestCount
+                            }
+                            return e;
+                        })
+                    }
+                })
+            });
+
+        });
+        preResults.push(currentLevel)
+    }
+
+    await writeJSONToFile("./data/results/", "endpointDistribution_preResults.json", preResults)
+    processPreResultsForRequestChart()
+    processPreResultsForRatioChart()
+    calculateBurdensomenessScore()
+}
+
 async function calculateEndpointDistribution() {
     if (!stepDone("endpointIntervals")) {
         // load peaks
@@ -254,5 +291,6 @@ module.exports = {
     calculateEndpointDistribution,
     processDataForDashboard,
     processPreResultsForRequestChart,
-    processPreResultsForRatioChart
+    processPreResultsForRatioChart,
+    calculateBurdensomenessScore
 };

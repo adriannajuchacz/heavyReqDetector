@@ -12,6 +12,7 @@
     "pre-results": "node src/scripts/generatePreResults.js",
     "request-chart": "node src/scripts/processRequestChart.js",
     "ratio-chart": "node src/scripts/processRatioChart.js",
+    "calculate-score": "node src/scripts/calculateBurdensomenessScore.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

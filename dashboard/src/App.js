@@ -3,6 +3,8 @@ import PeakVSNonPeaks from './components/PeakVSNonPeaks';
 import PeakDetection from './components/PeakDetection';
 import DataPointsChron from './components/DataPointsChron';
 import EndpointDistribution from './components/EndpointDistribution';
+import BurdensomenessScore from './components/BurdensomenessScore';
+
 import {
   BrowserRouter as Router,
   Switch,
@@ -29,6 +31,9 @@ function App() {
             <li style={{"margin-right": "30px"}}>
               <Link to="/peak_detection">Data Points chronogically</Link>
             </li>
+            <li style={{"margin-right": "30px"}}>
+              <Link to="/burdensomeness">Burdensomeness Score</Link>
+            </li>
           </ul>
           <hr />
 
@@ -44,6 +49,9 @@ function App() {
             </Route>
             <Route path="/peak_detection">
               <DataPointsChron />
+            </Route>
+            <Route path="/burdensomeness">
+              <BurdensomenessScore />
             </Route>
           </Switch>
         </div>

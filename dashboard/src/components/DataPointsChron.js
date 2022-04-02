@@ -10,7 +10,8 @@ import {
   ResponsiveContainer
 } from "recharts";
 
-import unsorted_points from '../data/unsorted_points.json';
+//import unsorted_points from '../data/unsorted_points_with_injection.json';
+import unsorted_points from '../data/unsorted_points_without_injection.json';
 
 export default function DataPointsChron() {
   return (
@@ -29,17 +30,17 @@ export default function DataPointsChron() {
           }}
         >
           <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
+          <XAxis dataKey="interval_no" />
+          <YAxis/>
           <Tooltip />
           <Legend />
           <Line
             type="monotone"
             dataKey="cpuValue"
-            stroke="#8884d8"
+            stroke="#eb4034"
             activeDot={{ r: 8 }}
           />
-          <Line type="monotone" dataKey="expectedValue" stroke="#82ca9d" />
+          <Line type="monotone" dataKey="expectedValue" stroke="#1c19bf" />
         </LineChart>
       </ResponsiveContainer>
     </div>
