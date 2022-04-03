@@ -1,3 +1,4 @@
+// CONFIG: MONITORING TOOL
 var awsCli = require('aws-cli-js');
 const { getPeakUTCs, readJSONfromFile, writeJSONToFile } = require('./helpers.js');
 const util = require('util');
@@ -22,6 +23,7 @@ Date.prototype.addHours = function(h) {
     return this;
 }
 
+// CONFIG: MONITORING TOOL
 async function fetchRequestCount() { 
     const start_time_UTC = new Date(config.start_time.split('+')[0]).getTime()
     const end_time_UTC = new Date(config.end_time.split('+')[0]).getTime()
@@ -59,10 +61,11 @@ async function fetchRequestCount() {
     return res;
 }
 
+// CONFIG: MONITORING TOOL
 async function fetchCPUValues() { 
     // start the query 
     console.log("Peak detection: fetch Cloudwatch metrics: CPU values")
-    res = await aws.command(`cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name CPUUtilization --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`).then(function (data) {
+    res = await aws.command(`cloudwatch get-metric-statistics --namespace AWS/EC2 --metric-name ${config.metric} --dimensions Name=InstanceId,Value=${config.EC2_instance_id} --statistics Maximum --start-time ${config.start_time} --end-time ${config.end_time} --period ${config.interval_in_sec}`).then(function (data) {
         return data.object.Datapoints
             // retrieve only timestamp and maximum CPU utilization
             .map(x => { return { 
@@ -80,6 +83,7 @@ async function fetchCPUValues() {
     return res;
 }
 
+// CONFIG: MONITORING TOOL
 async function fetchURLs(timestamp) { 
         // calculate the start_time and end_time (UTC) of the peak 
         const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
@@ -115,11 +119,13 @@ async function fetchURLs(timestamp) {
         return res;
 }
 
+// CONFIG: MONITORING TOOL
 async function runQuery(regex, timestamp) {
     // calculate the start_time and end_time (UTC) of the peak 
     const { peak_start_time_UTC, peak_end_time_UTC } = getPeakUTCs(timestamp)
     // start the query 
     let query_id
+    // CONFIG: METRIC
     await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${peak_start_time_UTC} --end-time ${peak_end_time_UTC} --query-string 'fields @timestamp, @message, responseTime | filter @logStream like "biz" and message like "request completed" and req.url like ${regex} | stats avg(responseTime), pct(responseTime, 95), pct(responseTime, 99), pct(responseTime, 99.5), pct(responseTime, 50)'`).then(function (data) {
         query_id = data.object.queryId
     }).catch((e) => {
@@ -164,6 +170,7 @@ async function runQuery(regex, timestamp) {
  * 
  * @param {array} urlArray 
  */
+// CONFIG: MONITORING TOOL
 async function fetchResponseTimeData(urlArray, timestamp) {
     for (let i = 0; i < urlArray.length; i++) {
         console.log(`processing: ${i+1}/${urlArray.length}`)

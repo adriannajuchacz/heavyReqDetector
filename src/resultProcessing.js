@@ -63,7 +63,7 @@ async function detectPeak() {
     return [...peaks, ...non_peaks];
 }
 
-
+// CONFIG: METRIC
 async function processAndExport(timestamp) {
     let urlArray = readJSONfromFile(`./data/mid-results/${timestamp}/endpoints_with_stats.json`);
     for (let i = 0; i < urlArray.length; i++) {

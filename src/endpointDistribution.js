@@ -33,6 +33,7 @@ async function fetcheRequestCountPerEndpoint(regex, timestamp, minResponseTime, 
     let query_id
     regex = new RegExp(regex);
 
+    // CONFIG: METRIC
     await aws.command(`logs start-query --log-group-name prod.aaron.ai --start-time ${peak_start_time_UTC} --end-time ${peak_end_time_UTC} --query-string 'fields @timestamp, @message, responseTime | filter @logStream like "biz" and message like "request completed" and req.url like ${regex} and responseTime > ${minResponseTime} and responseTime < ${maxResponseTime} | stats count(*) as RequestCount'`).then(function (data) {
         query_id = data.object.queryId
     }).catch((e) => {
@@ -226,6 +227,7 @@ async function calculateEndpointDistribution() {
                     "url": endpoint.url,
                     "intervalsData": []
                 }
+                // CONFIG: METRIC
                 let intervals = calculateIntervals(endpoint.median, endpoint["pct(responseTime, 995)"])
                 for (let i = 0; i < (intervals.length - 1); i++) {
                     console.log(`peak: ${current_peak}/${peaks.length} | endpoint: ${current_endpoint}/${endpoints.length} | interval: ${i + 1}/${intervals.length}`)
